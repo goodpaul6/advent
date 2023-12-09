@@ -1,0 +1,1 @@
+let () = print_endline "Hello, day 3!"
