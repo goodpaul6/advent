@@ -31,3 +31,13 @@
  (name day10)
  (modules day10)
  (libraries str))
+
+(executable
+ (name day11)
+ (modules day11)
+ (libraries str))
+
+(executable
+ (name day11_2)
+ (modules day11_2)
+ (libraries str))
