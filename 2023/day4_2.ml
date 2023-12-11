@@ -1,7 +1,5 @@
 type card = {
-  id: string;
-  winning_nums: int list;
-  your_nums: int list;
+  wins: int;
 }
 
 let fold_each_match fn regex str init =
@@ -25,26 +23,26 @@ let parse_nums nums_str =
     nums_str
     []
 
-let parse_card line =
-  match String.split_on_char ':' line with
-    | [] | [_] -> raise @@ Invalid_argument line
-    | card_id :: all_nums :: _ ->
-      match String.split_on_char '|' all_nums with
-        | [w_nums_str; y_nums_str] ->
-          let w_nums = parse_nums w_nums_str in
-          let y_nums = parse_nums y_nums_str in
-          { id = card_id; winning_nums = w_nums; your_nums = y_nums }
-        | _ -> raise @@ Invalid_argument line
-
-let card_win_count card =
+let win_count win_nums your_nums =
   List.fold_left
     (fun count y_num ->
-      if List.exists (fun v -> v = y_num) card.winning_nums then
+      if List.exists (fun v -> v = y_num) win_nums then
         count + 1
       else
         count)
     0
-    card.your_nums
+    your_nums
+
+let parse_card line =
+  match String.split_on_char ':' line with
+    | [] | [_] -> raise @@ Invalid_argument line
+    | _ :: all_nums :: _ ->
+      match String.split_on_char '|' all_nums with
+        | [w_nums_str; y_nums_str] ->
+          let w_nums = parse_nums w_nums_str in
+          let y_nums = parse_nums y_nums_str in
+          {wins = win_count w_nums y_nums}
+        | _ -> raise @@ Invalid_argument line
 
 (*let first n list =
   let rec aux acc n list =
@@ -60,33 +58,32 @@ let card_win_count card =
   String.concat ", " |>
   print_endline*)
 
-let next_n_cards orig_cards cur_card n =
-  let card_index = List.find_index (fun card -> cur_card.id = card.id) orig_cards in
+(*let next_n_cards orig_cards cur_card n =
+  let card_index = Array.find_index (fun card -> cur_card.id = card.id) orig_cards in
   match card_index with
   | Some index ->
-    List.filteri (fun i _ -> i > index && i <= index + n) orig_cards
-  | None -> raise @@ Invalid_argument "cur_card"
+    Array.sub orig_cards (index + 1) n
+  | None -> raise @@ Invalid_argument "cur_card"*)
 
-let rec count_cards orig_cards count cards_left =
-  let card_count = List.find_opt 
+let rec count_cards_mut orig_cards count cards_left =
+  let card_idx = Array.find_index 
     (fun (_, count) -> count > 0)
     cards_left
   in
-  match card_count with
-  | Some (card, _) ->
-    let win_count = card_win_count card in
-    let copy_cards = next_n_cards orig_cards card win_count in
-    let new_cards_left = List.map
-      (fun (left_card, count) ->
-        if left_card.id = card.id then
+  match card_idx with
+  | Some index ->
+    let (card, _) = cards_left.(index) in
+    let win_count = card.wins in
+    Array.mapi_inplace
+      (fun i (left_card, count) ->
+        if i = index then
           (left_card, count - 1)
-        else if List.exists (fun copy_card -> copy_card.id = left_card.id) copy_cards then
+        else if i > index && i <= index + win_count then
           (left_card, count + 1)
         else
           (left_card, count))
-      cards_left
-    in
-    count_cards orig_cards (count + 1) new_cards_left
+      cards_left;
+    count_cards_mut orig_cards (count + 1) cards_left
   | None -> count
 
 let () =
@@ -100,10 +97,10 @@ let () =
       cards
   in
   let orig_cards = aux [] |> List.rev in
-  let count = count_cards 
-    orig_cards 
+  let count = count_cards_mut
+    (Array.of_list orig_cards)
     0 
-    (List.map (fun card -> (card, 1)) orig_cards) 
+    (Array.of_list @@ List.map (fun card -> (card, 1)) orig_cards)
   in
   print_endline @@ string_of_int count
   
