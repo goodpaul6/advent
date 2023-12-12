@@ -42,32 +42,56 @@ bool is_valid_arrangement(std::string_view state, std::span<int> dam_groups) {
     return valid && group_iter == dam_groups.size();
 }
 
-std::int64_t arrange_rest(Row& orig_row, char* temp_state, int pos) {
+std::int64_t arrange_rest(Row& orig_row, char* temp_state, int pos, int gsize, int giter) {
+    if(giter > orig_row.dam_groups.size()) {
+        return 0;
+    }
+
+    if(gsize > 0 && gsize > orig_row.dam_groups[giter]) {
+        return 0;
+    }
+
     if(pos >= orig_row.state.size()) {
+        auto valid = (giter == orig_row.dam_groups.size() && gsize == 0) ||
+           (giter == orig_row.dam_groups.size() - 1 && gsize == orig_row.dam_groups.back());
+
+        /*
         // Now that we've done the arrangement down this path,
         // count it as 1 if it's valid.
         auto valid = is_valid_arrangement({temp_state, orig_row.state.size()}, 
             {orig_row.dam_groups.begin(), orig_row.dam_groups.end()});
+        */
 
+#if 1
         if(valid) {
             static int count = 0;
 
-            std::string_view sv{temp_state, orig_row.state.size()};
-
-            auto [_, new_value] = orig_row.memo.try_emplace(std::string{sv}, 1);
-
-            if(!new_value) {
-                std::cout << "repeat\n";
+            count += 1;
+            if(count % 1'000'000 == 0) {
+                std::cout << count << " arrangements found.\n";
             }
-
-            std::cout << count++ << ":\t\"" << sv << "\"\n";
         }
+#endif
 
         return valid ? 1 : 0;
     }
     
     if(temp_state[pos] != '?') {
-        return arrange_rest(orig_row, temp_state, pos + 1);
+        if(temp_state[pos] == '#') {
+            gsize += 1;
+        } else if(temp_state[pos] == '.') {
+            if(gsize > 0) {
+                if(gsize != orig_row.dam_groups[giter]) {
+                    return 0;
+                }
+
+                giter += 1;
+            }
+
+            gsize = 0;
+        }
+
+        return arrange_rest(orig_row, temp_state, pos + 1, gsize, giter);
     }
     
     std::int64_t total = 0;
@@ -76,17 +100,37 @@ std::int64_t arrange_rest(Row& orig_row, char* temp_state, int pos) {
 
     assert(orig_row.state.size() <= sizeof(mem));
 
-    std::memcpy(mem, temp_state, orig_row.state.size());
+    auto osize = orig_row.state.size();
+
+    std::memcpy(mem, temp_state, osize);
+
+    int prev_gsize = gsize;
+    int prev_giter = giter;
 
     temp_state[pos] = '#';
-    total += arrange_rest(orig_row, temp_state, pos + 1);
+    gsize += 1;
 
-    std::memcpy(temp_state, mem, orig_row.state.size());
+    total += arrange_rest(orig_row, temp_state, pos + 1, gsize, giter);
+
+    std::memcpy(temp_state, mem, osize);
 
     temp_state[pos] = '.';
-    total += arrange_rest(orig_row, temp_state, pos + 1);
 
-    std::memcpy(temp_state, mem, orig_row.state.size());
+    giter = prev_giter;
+
+    if(prev_gsize > 0) {
+        if(prev_gsize != orig_row.dam_groups[prev_giter]) {
+            return total;
+        }
+
+        giter += 1;
+    }
+
+    gsize = 0;
+
+    total += arrange_rest(orig_row, temp_state, pos + 1, gsize, giter);
+
+    std::memcpy(temp_state, mem, osize);
 
     return total;
 }
@@ -147,9 +191,7 @@ int main() {
         char state[256];
         std::memcpy(state, row.state.data(), row.state.size());
 
-        std::cout << row.state << '\n';
-
-        total += arrange_rest(row, state, 0);
+        total += arrange_rest(row, state, 0, 0, 0);
     }
 
     std::cout << total << '\n';
