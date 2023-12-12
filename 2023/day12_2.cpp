@@ -42,18 +42,26 @@ bool is_valid_arrangement(std::string_view state, std::span<int> dam_groups) {
     return valid && group_iter == dam_groups.size();
 }
 
-int arrange_rest(Row& orig_row, char* temp_state, int pos) {
+std::int64_t arrange_rest(Row& orig_row, char* temp_state, int pos) {
     if(pos >= orig_row.state.size()) {
         // Now that we've done the arrangement down this path,
         // count it as 1 if it's valid.
         auto valid = is_valid_arrangement({temp_state, orig_row.state.size()}, 
             {orig_row.dam_groups.begin(), orig_row.dam_groups.end()});
 
-        /*
         if(valid) {
-            std::cout << orig_row.state << ',' << temp_state << '\n';
+            static int count = 0;
+
+            std::string_view sv{temp_state, orig_row.state.size()};
+
+            auto [_, new_value] = orig_row.memo.try_emplace(std::string{sv}, 1);
+
+            if(!new_value) {
+                std::cout << "repeat\n";
+            }
+
+            std::cout << count++ << ":\t\"" << sv << "\"\n";
         }
-        */
 
         return valid ? 1 : 0;
     }
@@ -62,7 +70,7 @@ int arrange_rest(Row& orig_row, char* temp_state, int pos) {
         return arrange_rest(orig_row, temp_state, pos + 1);
     }
     
-    int total = 0;
+    std::int64_t total = 0;
 
     char mem[256];
 
@@ -118,12 +126,11 @@ int main() {
             return true;
         });
 
-#if 0
-        // Repeat 5 times
+#if 1
         auto temp = row.state;
         auto temp_dam_groups = row.dam_groups;
 
-        for(int i = 0; i < 5; ++i) {
+        for(int i = 0; i < 4; ++i) {
             row.state += '?';
             row.state += temp;
 
@@ -134,11 +141,13 @@ int main() {
         rows.push_back(std::move(row));
     });
 
-    int total = 0;
+    int64_t total = 0;
 
     for(auto& row : rows) {
         char state[256];
         std::memcpy(state, row.state.data(), row.state.size());
+
+        std::cout << row.state << '\n';
 
         total += arrange_rest(row, state, 0);
     }
