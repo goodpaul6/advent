@@ -13,8 +13,6 @@ using namespace advent;
 namespace {
 
 struct Row {
-    std::unordered_map<std::string, int> memo;
-
     std::string state;
     std::vector<int> dam_groups;
 };
@@ -42,95 +40,143 @@ bool is_valid_arrangement(std::string_view state, std::span<int> dam_groups) {
     return valid && group_iter == dam_groups.size();
 }
 
-std::int64_t arrange_rest(Row& orig_row, char* temp_state, int pos, int gsize, int giter) {
-    if(giter > orig_row.dam_groups.size()) {
-        return 0;
-    }
-
-    if(gsize > 0 && gsize > orig_row.dam_groups[giter]) {
-        return 0;
-    }
-
-    if(pos >= orig_row.state.size()) {
-        auto valid = (giter == orig_row.dam_groups.size() && gsize == 0) ||
-           (giter == orig_row.dam_groups.size() - 1 && gsize == orig_row.dam_groups.back());
-
-        /*
-        // Now that we've done the arrangement down this path,
-        // count it as 1 if it's valid.
-        auto valid = is_valid_arrangement({temp_state, orig_row.state.size()}, 
-            {orig_row.dam_groups.begin(), orig_row.dam_groups.end()});
-        */
-
-#if 1
-        if(valid) {
-            static int count = 0;
-
-            count += 1;
-            if(count % 1'000'000 == 0) {
-                std::cout << count << " arrangements found.\n";
-            }
+template <typename Container>
+void print_values(const Container& values) {
+    std::cout << '{';
+    for(bool first = true; const auto& value : values) {
+        if(!first) {
+            std::cout << ", ";
         }
-#endif
 
-        return valid ? 1 : 0;
+        std::cout << value;
+        first = false;
     }
-    
-    if(temp_state[pos] != '?') {
-        if(temp_state[pos] == '#') {
-            gsize += 1;
-        } else if(temp_state[pos] == '.') {
-            if(gsize > 0) {
-                if(gsize != orig_row.dam_groups[giter]) {
-                    return 0;
+    std::cout << "}\n";
+}
+
+std::int64_t arrange(std::string_view state, std::span<int> dam_groups) {
+    // Note that the strings store a group length per byte, so they're just
+    // std::vector<byte> really but I don't want to write a hash + equality check
+    // for that so I'm leveraging this.
+    //
+    // Also note that if it ends with a zero that's indicating the previous group
+    // ended.
+    std::unordered_map<std::string, std::int64_t> valid_subgroup_counts;
+
+    valid_subgroup_counts.try_emplace("", 1);
+
+    for(auto state_ch : state) {
+        std::unordered_map<std::string, std::int64_t> new_subgroups;
+
+        std::string_view possible_chars;
+
+        if(state_ch == '?') {
+            possible_chars = "#.";
+        } else {
+            static char buf[1];
+
+            buf[0] = state_ch;
+            possible_chars = buf;
+        }
+
+        for(const auto& [groups, count] : valid_subgroup_counts) {
+            for(auto ch : possible_chars) {
+                auto new_groups = groups;
+
+                if(ch == '.') {
+                    if(groups.empty() || groups.back() != 0) {
+                        new_groups.push_back(0);
+                    }
+                } else if (ch == '#') {
+                    if(groups.empty()) {
+                        new_groups.push_back(1);
+                    } else {
+                        new_groups.back() += 1;
+                    }
                 }
 
-                giter += 1;
+                new_subgroups[new_groups] += count;
+            }
+        }
+
+        // Filter the new subgroups and only keep the valid ones
+        std::erase_if(new_subgroups, [&](const auto& item) {
+            auto& groups = item.first;
+
+            auto size = groups.size();
+            
+            // This is just a sentinel value
+            if(groups.back() == 0) {
+                size -= 1;
             }
 
-            gsize = 0;
-        }
+            if(size > dam_groups.size()) {
+                return true;
+            }
 
-        return arrange_rest(orig_row, temp_state, pos + 1, gsize, giter);
+            if(size == 0) {
+                return false;
+            }
+
+            if(groups[size - 1] > dam_groups[size - 1]) {
+                return true;
+            }
+
+            for(int i = 0; i < size - 1; ++i) {
+                if(groups[i] != dam_groups[i]) {
+                    return true;
+                }
+            }
+
+            return false;
+        });
+
+        valid_subgroup_counts = std::move(new_subgroups);
     }
-    
+
     std::int64_t total = 0;
 
-    char mem[256];
+#ifdef DEBUG_PRINT
+    std::cout << "dam_groups=";
+    print_values(dam_groups);
+#endif
 
-    assert(orig_row.state.size() <= sizeof(mem));
+    for(auto& [groups, count] : valid_subgroup_counts) {
+        auto size = groups.size();
 
-    auto osize = orig_row.state.size();
-
-    std::memcpy(mem, temp_state, osize);
-
-    int prev_gsize = gsize;
-    int prev_giter = giter;
-
-    temp_state[pos] = '#';
-    gsize += 1;
-
-    total += arrange_rest(orig_row, temp_state, pos + 1, gsize, giter);
-
-    std::memcpy(temp_state, mem, osize);
-
-    temp_state[pos] = '.';
-
-    giter = prev_giter;
-
-    if(prev_gsize > 0) {
-        if(prev_gsize != orig_row.dam_groups[prev_giter]) {
-            return total;
+        if(groups.back() == 0) {
+            size -= 1;
         }
 
-        giter += 1;
+        if(size != dam_groups.size()) {
+            continue;
+        }
+
+        bool valid = true;
+
+        for(int i = 0; i < size; ++i) {
+            if(groups[i] != dam_groups[i]) {
+                valid = false;
+                break;
+            }
+        }
+
+        if(valid) {
+#ifdef DEBUG_PRINT
+            std::cout << '{';
+            for(bool first = true; auto ch : groups) {
+                if(!first) {
+                    std::cout << ", ";
+                }
+                std::cout << static_cast<int>(ch);
+                first = false;
+            }
+            std::cout << "}\n";
+#endif
+
+            total += count;
+        }
     }
-
-    gsize = 0;
-
-    total += arrange_rest(orig_row, temp_state, pos + 1, gsize, giter);
-
-    std::memcpy(temp_state, mem, osize);
 
     return total;
 }
@@ -170,7 +216,7 @@ int main() {
             return true;
         });
 
-#if 1
+#if 0
         auto temp = row.state;
         auto temp_dam_groups = row.dam_groups;
 
@@ -188,10 +234,7 @@ int main() {
     int64_t total = 0;
 
     for(auto& row : rows) {
-        char state[256];
-        std::memcpy(state, row.state.data(), row.state.size());
-
-        total += arrange_rest(row, state, 0, 0, 0);
+        total += arrange(row.state, row.dam_groups);
     }
 
     std::cout << total << '\n';
