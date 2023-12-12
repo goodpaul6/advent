@@ -49,19 +49,19 @@ bool is_valid_arrangement(std::string_view state, std::span<int> dam_groups) {
         group_size == dam_groups[orig_group_iter])) ? 1 : 0;
 }
 
-int arrange_rest(Row& orig_row, std::string& temp_state, int pos, int group_count) {
+int arrange_rest(Row& orig_row, char* temp_state, int pos, int group_count) {
     if(group_count > orig_row.dam_groups.size()) {
         return 0;
     }
 
-    if(pos >= temp_state.size()) {
+    if(pos >= orig_row.state.size()) {
         if(group_count != orig_row.dam_groups.size()) {
             return 0;
         }
 
         // Now that we've done the arrangement down this path,
         // count it as 1 if it's valid.
-        auto valid = is_valid_arrangement(temp_state, 
+        auto valid = is_valid_arrangement({temp_state, orig_row.state.size()}, 
             {orig_row.dam_groups.begin(), orig_row.dam_groups.end()});
 
         /*
@@ -95,7 +95,11 @@ int arrange_rest(Row& orig_row, std::string& temp_state, int pos, int group_coun
  
     int total = 0;
 
-    std::string mem = temp_state;
+    char mem[64];
+
+    assert(orig_row.state.size() < sizeof(mem));
+
+    std::memcpy(mem, temp_state, orig_row.state.size());
 
     temp_state[pos] = '#';
 
@@ -107,13 +111,13 @@ int arrange_rest(Row& orig_row, std::string& temp_state, int pos, int group_coun
     
     total += arrange_rest(orig_row, temp_state, pos + 1, gc);
 
-    temp_state = mem;
+    std::memcpy(temp_state, mem, orig_row.state.size());
     gc = group_count;
 
     temp_state[pos] = '.';
     total += arrange_rest(orig_row, temp_state, pos + 1, gc);
 
-    temp_state = mem;
+    std::memcpy(temp_state, mem, orig_row.state.size());
 
     //orig_row.memo[sub] = total;
 
@@ -159,9 +163,12 @@ int main() {
     int total = 0;
 
     for(auto& row : rows) {
-        std::string state{row.state};
+        char temp_state[64];
 
-        total += arrange_rest(row, state, 0, 0);
+        assert(row.state.size() <= sizeof(temp_state));
+        std::memcpy(temp_state, &row.state[0], row.state.size());
+
+        total += arrange_rest(row, temp_state, 0, 0);
     }
 
     std::cout << total << '\n';
