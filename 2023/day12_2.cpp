@@ -72,11 +72,10 @@ std::int64_t arrange(std::string_view state, std::span<int> dam_groups) {
 
         if(state_ch == '?') {
             possible_chars = "#.";
-        } else {
-            static char buf[1];
-
-            buf[0] = state_ch;
-            possible_chars = buf;
+        } else if(state_ch == '#') {
+            possible_chars = "#";
+        } else if(state_ch == '.') {
+            possible_chars = ".";
         }
 
         for(const auto& [groups, count] : valid_subgroup_counts) {
@@ -144,7 +143,7 @@ std::int64_t arrange(std::string_view state, std::span<int> dam_groups) {
     for(auto& [groups, count] : valid_subgroup_counts) {
         auto size = groups.size();
 
-        if(groups.back() == 0) {
+        if(!groups.empty() && groups.back() == 0) {
             size -= 1;
         }
 
@@ -216,7 +215,7 @@ int main() {
             return true;
         });
 
-#if 0
+#if 1
         auto temp = row.state;
         auto temp_dam_groups = row.dam_groups;
 
