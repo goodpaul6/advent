@@ -63,22 +63,21 @@ int arrange_rest(Row& orig_row, std::string& temp_state, int pos) {
 
         return valid ? 1 : 0;
     }
- 
-    if(temp_state[pos] != '?') {
-        return arrange_rest(orig_row, temp_state, pos + 1);
-    }
 
     auto sub = temp_state.substr(pos);
-
     auto found = orig_row.memo.find(sub);
 
     if(found != orig_row.memo.end()) {
         return found->second;
     }
     
+    if(temp_state[pos] != '?') {
+        return arrange_rest(orig_row, temp_state, pos + 1);
+    }
+    
     int total = 0;
 
-    std::string mem = temp_state;    
+    std::string mem = temp_state;
 
     temp_state[pos] = '#';
     total += arrange_rest(orig_row, temp_state, pos + 1);
