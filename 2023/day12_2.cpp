@@ -95,7 +95,7 @@ int arrange_rest(Row& orig_row, char* temp_state, int pos, int group_count) {
  
     int total = 0;
 
-    char mem[64];
+    char mem[256];
 
     assert(orig_row.state.size() < sizeof(mem));
 
@@ -157,13 +157,24 @@ int main() {
             }
         });
 
+        // Repeat 5 times
+        auto temp = row.state;
+        auto temp_dam_groups = row.dam_groups;
+
+        for(int i = 0; i < 5; ++i) {
+            row.state += '?';
+            row.state += temp;
+
+            row.dam_groups.insert(row.dam_groups.end(), temp_dam_groups.begin(), temp_dam_groups.end());
+        }
+
         rows.push_back(std::move(row));
     });
 
     int total = 0;
 
     for(auto& row : rows) {
-        char temp_state[64];
+        char temp_state[256];
 
         assert(row.state.size() <= sizeof(temp_state));
         std::memcpy(temp_state, &row.state[0], row.state.size());
