@@ -54,10 +54,13 @@ int arrange_rest(Row& orig_row, char* temp_state, int pos, int group_count) {
         return 0;
     }
 
-    if(pos >= orig_row.state.size()) {
+    if(pos >= orig_row.state.size() ||
+       std::memchr(temp_state + pos, '?', orig_row.state.size() - pos) == nullptr) {
+        /*
         if(group_count != orig_row.dam_groups.size()) {
             return 0;
         }
+        */
 
         // Now that we've done the arrangement down this path,
         // count it as 1 if it's valid.
