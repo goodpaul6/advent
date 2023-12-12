@@ -2,19 +2,6 @@ type pos = {
   row: int;
   col: int;
 }
-
-let fold_each_match fn regex str init =
-  let rec aux acc col =
-    try
-      let match_col = Str.search_forward regex str col in
-      let str = Str.matched_string str in
-      let new_acc = fn acc (str, match_col) in
-      aux new_acc @@ match_col + String.length str
-    with _ ->
-      acc
-  in
-  aux init 0
-
 let lines =
   let ic = open_in "inputs/day11.txt" in
   let rec loop acc =
@@ -49,9 +36,6 @@ let expanded_cols =
         loop (col :: cols) lines (col + 1)
   in
   loop [] lines 0
-
-let galaxy_regex = Str.regexp "#"
-
 let expand_count = 1_000_000
 
 let galaxy_posns =

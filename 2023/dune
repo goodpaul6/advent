@@ -24,6 +24,11 @@
  (libraries str))
 
 (executable
+ (name day5)
+ (modules day5)
+ (libraries str))
+
+(executable
  (name day9)
  (modules day9))
 
