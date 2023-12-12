@@ -8,6 +8,8 @@
 #include "span_utils.hpp"
 #include "file_utils.hpp"
 
+using namespace advent;
+
 namespace {
 
 struct Row {
@@ -18,33 +20,26 @@ struct Row {
 };
 
 bool is_valid_arrangement(std::string_view state, std::span<int> dam_groups) {
-    int group_size = 0;
-    int orig_group_iter = 0;
+    int group_iter = 0;
+    bool valid = true;
 
-    for(auto ch : state) {
-        if(ch == '#') {
-            group_size += 1;
-        } else if(ch == '.') {
-            if(group_size > 0) {
-                if(orig_group_iter >= dam_groups.size() ||
-                    group_size != dam_groups[orig_group_iter]) {
-                    return false;
-                }
-
-                orig_group_iter += 1;
-            }
-
-            group_size = 0;
-        } else {
-            // Should be fully arranged by now
-            assert(false);
+    for_each_split_part(state, ".", [&](auto part) {
+        if(part.empty()) {
+            return true;
         }
-    }
 
-    // If this is a terminating group, make sure it matches
-    return ((group_size == 0 && orig_group_iter == dam_groups.size()) ||
-        (orig_group_iter == dam_groups.size() - 1 &&
-        group_size == dam_groups[orig_group_iter])) ? 1 : 0;
+        int group_size = part.size();
+
+        if(group_size != dam_groups[group_iter]) {
+            valid = false;
+            return false;
+        }
+
+        group_iter += 1;
+        return true;
+    });
+
+    return valid && group_iter == dam_groups.size();
 }
 
 int arrange_rest(Row& orig_row, char* temp_state, int pos) {
@@ -91,8 +86,6 @@ int arrange_rest(Row& orig_row, char* temp_state, int pos) {
 }
 
 int main() {
-    using namespace advent;
-
     std::ifstream input{"inputs/day12.txt"};
 
     std::vector<Row> rows;
@@ -117,9 +110,26 @@ int main() {
                     row.dam_groups.push_back(
                         string_to_number<int>(num_str)
                     );
+
+                    return true;
                 });
             }
+
+            return true;
         });
+
+#if 0
+        // Repeat 5 times
+        auto temp = row.state;
+        auto temp_dam_groups = row.dam_groups;
+
+        for(int i = 0; i < 5; ++i) {
+            row.state += '?';
+            row.state += temp;
+
+            row.dam_groups.insert(row.dam_groups.end(), temp_dam_groups.begin(), temp_dam_groups.end());
+        }
+#endif
 
         rows.push_back(std::move(row));
     });

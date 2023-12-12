@@ -16,7 +16,9 @@ void for_each_split_part(std::string_view str, std::string_view delim, Fn&& fn) 
         auto next_pos = str.find(delim);
         auto sub_str = str.substr(0, next_pos);
 
-        fn(sub_str);
+        if(!fn(sub_str)) {
+            break;
+        }
 
         if(next_pos == std::string_view::npos) {
             return;
@@ -54,6 +56,7 @@ inline void test_split_string() {
 
     for_each_split_part(str, ",", [&](auto part) {
         strs.push_back(part);
+        return true;
     });
 
     assert(strs.size() == 3);
