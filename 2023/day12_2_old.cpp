@@ -3,6 +3,7 @@
 #include <string>
 #include <iostream>
 #include <unordered_map>
+#include <cstdlib>
 
 #include "string_utils.hpp"
 #include "span_utils.hpp"
@@ -36,6 +37,7 @@ bool is_valid_arrangement(std::string_view state, std::span<int> dam_groups) {
 
             group_size = 0;
         } else {
+            std::cout << state << '\n';
             // Should be fully arranged by now
             assert(false);
         }
@@ -47,8 +49,20 @@ bool is_valid_arrangement(std::string_view state, std::span<int> dam_groups) {
         group_size == dam_groups[orig_group_iter])) ? 1 : 0;
 }
 
-int arrange_rest(Row& orig_row, char* temp_state, int pos) {
+int arrange_rest(Row& orig_row, char* temp_state, int pos, int group_count) {
+    /*
+    if(group_count > orig_row.dam_groups.size()) {
+        return 0;
+    }
+    */
+
     if(pos >= orig_row.state.size()) {
+        /*
+        if(group_count != orig_row.dam_groups.size()) {
+            return 0;
+        }
+        */
+
         // Now that we've done the arrangement down this path,
         // count it as 1 if it's valid.
         auto valid = is_valid_arrangement({temp_state, orig_row.state.size()}, 
@@ -62,28 +76,54 @@ int arrange_rest(Row& orig_row, char* temp_state, int pos) {
 
         return valid ? 1 : 0;
     }
+
+    /*
+    auto sub = temp_state.substr(0, pos);
+    auto found = orig_row.memo.find(sub);
+
+    if(found != orig_row.memo.end()) {
+        return found->second;
+    }
+    */
     
     if(temp_state[pos] != '?') {
-        return arrange_rest(orig_row, temp_state, pos + 1);
+        if(temp_state[pos] == '#') {
+            if(pos == 0 ||
+               temp_state[pos - 1] != '#') {
+                group_count += 1;
+            }
+        }
+
+        return arrange_rest(orig_row, temp_state, pos + 1, group_count);
     }
-    
+ 
     int total = 0;
 
     char mem[256];
 
-    assert(orig_row.state.size() <= sizeof(mem));
+    assert(orig_row.state.size() < sizeof(mem));
 
     std::memcpy(mem, temp_state, orig_row.state.size());
 
     temp_state[pos] = '#';
-    total += arrange_rest(orig_row, temp_state, pos + 1);
+
+    int gc = group_count;
+    if(pos == 0 || temp_state[pos - 1] != '#') {
+        // We created a new group, so increment group count
+        gc += 1;
+    }
+    
+    total += arrange_rest(orig_row, temp_state, pos + 1, gc);
 
     std::memcpy(temp_state, mem, orig_row.state.size());
+    gc = group_count;
 
     temp_state[pos] = '.';
-    total += arrange_rest(orig_row, temp_state, pos + 1);
+    total += arrange_rest(orig_row, temp_state, pos + 1, gc);
 
     std::memcpy(temp_state, mem, orig_row.state.size());
+
+    //orig_row.memo[sub] = total;
 
     return total;
 }
@@ -121,19 +161,34 @@ int main() {
             }
         });
 
+        #if 0
+        // Repeat 5 times
+        auto temp = row.state;
+        auto temp_dam_groups = row.dam_groups;
+
+        for(int i = 0; i < 5; ++i) {
+            row.state += '?';
+            row.state += temp;
+
+            row.dam_groups.insert(row.dam_groups.end(), temp_dam_groups.begin(), temp_dam_groups.end());
+        }
+        #endif
+
         rows.push_back(std::move(row));
     });
 
     int total = 0;
 
     for(auto& row : rows) {
-        char state[256];
-        std::memcpy(state, row.state.data(), row.state.size());
+        char temp_state[256];
 
-        total += arrange_rest(row, state, 0);
+        assert(row.state.size() <= sizeof(temp_state));
+        std::memcpy(temp_state, &row.state[0], row.state.size());
+
+        total += arrange_rest(row, temp_state, 0, 0);
     }
 
     std::cout << total << '\n';
 
-    return 0;
+    std::quick_exit(0);
 }
