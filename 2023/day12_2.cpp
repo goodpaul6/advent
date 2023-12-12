@@ -3,6 +3,7 @@
 #include <string>
 #include <iostream>
 #include <unordered_map>
+#include <cstdlib>
 
 #include "string_utils.hpp"
 #include "span_utils.hpp"
@@ -48,8 +49,16 @@ bool is_valid_arrangement(std::string_view state, std::span<int> dam_groups) {
         group_size == dam_groups[orig_group_iter])) ? 1 : 0;
 }
 
-int arrange_rest(Row& orig_row, std::string& temp_state, int pos) {
+int arrange_rest(Row& orig_row, std::string& temp_state, int pos, int group_count) {
+    if(group_count > orig_row.dam_groups.size()) {
+        return 0;
+    }
+
     if(pos >= temp_state.size()) {
+        if(group_count != orig_row.dam_groups.size()) {
+            return 0;
+        }
+
         // Now that we've done the arrangement down this path,
         // count it as 1 if it's valid.
         auto valid = is_valid_arrangement(temp_state, 
@@ -64,30 +73,49 @@ int arrange_rest(Row& orig_row, std::string& temp_state, int pos) {
         return valid ? 1 : 0;
     }
 
-    auto sub = temp_state.substr(pos);
+    /*
+    auto sub = temp_state.substr(0, pos);
     auto found = orig_row.memo.find(sub);
 
     if(found != orig_row.memo.end()) {
         return found->second;
     }
+    */
     
     if(temp_state[pos] != '?') {
-        return arrange_rest(orig_row, temp_state, pos + 1);
+        if(temp_state[pos] == '#') {
+            if(pos == 0 ||
+               temp_state[pos - 1] != '#') {
+                group_count += 1;
+            }
+        }
+
+        return arrange_rest(orig_row, temp_state, pos + 1, group_count);
     }
-    
+ 
     int total = 0;
 
     std::string mem = temp_state;
 
     temp_state[pos] = '#';
-    total += arrange_rest(orig_row, temp_state, pos + 1);
+
+    int gc = group_count;
+    if(pos == 0 || temp_state[pos - 1] != '#') {
+        // We created a new group, so increment group count
+        gc += 1;
+    }
+    
+    total += arrange_rest(orig_row, temp_state, pos + 1, gc);
+
+    temp_state = mem;
+    gc = group_count;
+
+    temp_state[pos] = '.';
+    total += arrange_rest(orig_row, temp_state, pos + 1, gc);
 
     temp_state = mem;
 
-    temp_state[pos] = '.';
-    total += arrange_rest(orig_row, temp_state, pos + 1);
-
-    orig_row.memo[sub] = total;
+    //orig_row.memo[sub] = total;
 
     return total;
 }
@@ -133,10 +161,10 @@ int main() {
     for(auto& row : rows) {
         std::string state{row.state};
 
-        total += arrange_rest(row, state, 0);
+        total += arrange_rest(row, state, 0, 0);
     }
 
     std::cout << total << '\n';
 
-    return 0;
+    std::quick_exit(0);
 }
