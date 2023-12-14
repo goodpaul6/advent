@@ -6,7 +6,7 @@ cycle_dirs = ('n', 'w', 's', 'e')
 w = len(chars[0])
 h = len(chars)
 
-for i in range(3):
+for i in range(1_000_000_000):
     for dir_ in cycle_dirs:
         if dir_ == 'n':
             for col in range(w):
@@ -80,13 +80,13 @@ for i in range(3):
         #print("\n".join(["".join(line) for line in chars]))
         #print()
 
-total_load = 0
+    total_load = 0
 
-for row, line in enumerate(chars):
-    for ch in line:
-        if ch == 'O':
-            total_load += (len(chars) - row)
+    for row, line in enumerate(chars):
+        for ch in line:
+            if ch == 'O':
+                total_load += (len(chars) - row)
 
-print("\n".join(["".join(line) for line in chars]))
-print(total_load)
+    #print("\n".join(["".join(line) for line in chars]))
+    print(total_load)
 
