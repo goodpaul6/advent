@@ -2,6 +2,7 @@
 #include <fstream>
 #include <vector>
 #include <algorithm>
+#include <future>
 
 #include "string_utils.hpp"
 #include "span_utils.hpp"
@@ -78,7 +79,7 @@ int main(int argc, char** argv) {
     int w = chars.at(0).size();
     int h = chars.size();
 
-    const auto total_init = [&](int ix, int iy, int idx, int idy) {
+    const auto total_init_sync = [&](int ix, int iy, int idx, int idy) {
         std::vector<Beam> beams;
 
         beams.emplace_back();
@@ -179,14 +180,14 @@ int main(int argc, char** argv) {
             if(total == prev_total) {
                 total_seen_times += 1;
 
-                if(total_seen_times % 100 == 0) {
+                if(total_seen_times % 5 == 0) {
                     std::cout << "Seen " << total << " " << total_seen_times << " times\n";
                 }
             } else {
                 total_seen_times = 0; 
             }
 
-            if(total_seen_times >= 100 /* (w * h) */) {
+            if(total_seen_times >= 5 /* (w * h) */) {
                 return total;
             }
 
@@ -196,10 +197,14 @@ int main(int argc, char** argv) {
         return 0;
     };
 
+    const auto total_init = [&](auto... params) {
+        return std::async(std::launch::async, total_init_sync, params...);
+    };
+
     int max_total = 0;
 
     for(int x = 0; x < w; ++x) {
-        int res[] = {
+        std::future<int> res[] = {
             total_init(x, 0, 1, 0),
             total_init(x, 0, -1, 0),
             total_init(x, h-1, 1, 0),
@@ -208,13 +213,13 @@ int main(int argc, char** argv) {
             total_init(x, h-1, 0, -1),
         };
 
-        for(auto r : res){
-            max_total = std::max(max_total, r);
+        for(auto& r : res){
+            max_total = std::max(max_total, r.get());
         }    
     }
 
     for(int y = 0; y < w; ++y) {
-        int res[] = {
+        std::future<int> res[] = {
             total_init(0, y, 1, 0),
             total_init(0, y, -1, 0),
             total_init(w-1, y, 1, 0),
@@ -223,8 +228,8 @@ int main(int argc, char** argv) {
             total_init(w-1, y, 0, -1),
         };
 
-        for(auto r : res){
-            max_total = std::max(max_total, r);
+        for(auto& r : res){
+            max_total = std::max(max_total, r.get());
         }
     }
 
