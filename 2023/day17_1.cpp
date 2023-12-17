@@ -68,7 +68,7 @@ int main() {
         int xx = pos.x + pos.dx;
         int yy = pos.y + pos.dy;
 
-        if((pos.dx != 0 && pos.dy != 0) || (pos.dx == 0 && pos.dy == 0) || std::abs(pos.dx) > 10 || std::abs(pos.dy) > 10 ||
+        if((pos.dx != 0 && pos.dy != 0) || (pos.dx == 0 && pos.dy == 0) || std::abs(pos.dx) > 3 || std::abs(pos.dy) > 3 ||
             xx < 0 || xx >= w || yy < 0 || yy >= h) {
             continue;
         }
@@ -99,18 +99,15 @@ int main() {
         pos.hl_so_far += c;
 
         #if 0
-        if(xx == w - 1 && yy == 0) {
+        if(xx == 2 && yy == 0) {
             std::cout << xx << ',' << yy << ',' << static_cast<int>(pos.dx) << ',' << static_cast<int>(pos.dy) << ',' << static_cast<int>(pos.hl_so_far) << '\n';
         }
         #endif
 
-        if(std::abs(pos.dx + pos.dy) >= 4) {
-            // Only update if we moved at least 4 steps
-            auto& prev_min = min_at_pos[xx + yy * w];
-            
-            if(prev_min == 0 || pos.hl_so_far < prev_min) {
-                prev_min = pos.hl_so_far;
-            }
+        auto& prev_min = min_at_pos[xx + yy * w];
+        
+        if(prev_min == 0 || pos.hl_so_far < prev_min) {
+            prev_min = pos.hl_so_far;
         }
 
         // Bottom right corner
@@ -118,36 +115,35 @@ int main() {
             continue;
         }
 
-        if(pos.dx > 0 && pos.dx < 10) {
+        if(pos.dx > 0 && pos.dx < 3) {
             auto p = pos;
             p.dx += 1;
 
             pos_offs.push(p);     
         }
 
-        if(pos.dx < 0 && pos.dx > -10) {
+        if(pos.dx < 0 && pos.dx > -3) {
             auto p = pos;
             p.dx -= 1;
             
             pos_offs.push(p);
         }
 
-        if(pos.dy > 0 && pos.dy < 10) {
+        if(pos.dy > 0 && pos.dy < 3) {
             auto p = pos;
             p.dy += 1;
 
             pos_offs.push(p);     
         }
 
-        if(pos.dy < 0 && pos.dy > -10) {
+        if(pos.dy < 0 && pos.dy > -3) {
             auto p = pos;
             p.dy -= 1;
             
             pos_offs.push(p);
         }
 
-
-        if(std::abs(pos.dx + pos.dy) >= 4) {
+        if(pos.dx != 0 || pos.dy != 0) {
             auto p = pos;
 
             // Changing directions
