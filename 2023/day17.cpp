@@ -45,11 +45,19 @@ int main() {
 
     std::queue<PosOff> pos_offs;
 
-    pos_offs.emplace();
+    PosOff p_right;
+    p_right.dx = 1;
+
+    PosOff p_down;
+    p_down.dy = 1;
+
+    pos_offs.emplace(p_right);
+    pos_offs.emplace(p_down);
 
     // Submissions:
     // 984 too high
-    // 
+    // Just a guess 735 too low
+    // 860 is not right answer but in the ballpark I guess?
 
     while(!pos_offs.empty()) {
         auto pos = pos_offs.front();   
@@ -58,7 +66,7 @@ int main() {
         int xx = pos.x + pos.dx;
         int yy = pos.y + pos.dy;
 
-        if((pos.dx != 0 && pos.dy != 0) || std::abs(pos.dx) > 3 || std::abs(pos.dy) > 3 ||
+        if((pos.dx != 0 && pos.dy != 0) || (pos.dx == 0 && pos.dy == 0) || std::abs(pos.dx) > 3 || std::abs(pos.dy) > 3 ||
             xx < 0 || xx >= blocks[0].size() || yy < 0 || yy >= blocks.size()) {
             continue;
         }
@@ -67,9 +75,7 @@ int main() {
   
         int c = blocks[yy][xx];
         
-        if(xx != 0 || yy != 0) {
-            pos.hl_so_far += c;
-        }
+        pos.hl_so_far += c;
 
         auto& prev_min = min_at_pos[xx + yy * w];
         
@@ -82,35 +88,35 @@ int main() {
             continue;
         }
 
-        // std::cout << xx << ',' << yy << ',' << static_cast<int>(pos.dx) << ',' << static_cast<int>(pos.dy) << ',' << static_cast<int>(pos.hl_so_far) << '\n';
+        std::cout << xx << ',' << yy << ',' << static_cast<int>(pos.dx) << ',' << static_cast<int>(pos.dy) << ',' << static_cast<int>(pos.hl_so_far) << '\n';
 
         // Bottom right corner
         if(xx == blocks[0].size() - 1 && yy == blocks.size() - 1) {
             continue;
         }
 
-        if(pos.dx >= 0 && pos.dx < 3) {
+        if(pos.dx > 0 && pos.dx < 3) {
             auto p = pos;
             p.dx += 1;
 
             pos_offs.push(p);     
         }
 
-        if(pos.dx <= 0 && pos.dx > -3) {
+        if(pos.dx < 0 && pos.dx > -3) {
             auto p = pos;
             p.dx -= 1;
             
             pos_offs.push(p);
         }
 
-        if(pos.dy >= 0 && pos.dy < 3) {
+        if(pos.dy > 0 && pos.dy < 3) {
             auto p = pos;
             p.dy += 1;
 
             pos_offs.push(p);     
         }
 
-        if(pos.dy <= 0 && pos.dy > -3) {
+        if(pos.dy < 0 && pos.dy > -3) {
             auto p = pos;
             p.dy -= 1;
             
