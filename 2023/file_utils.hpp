@@ -15,8 +15,9 @@ void for_each_line(std::istream& stream, Fn&& fn) {
 }
 
 inline void read_lines(std::istream& stream, std::vector<std::string>& lines) {
-    for_each_line(stream, [](std::string_view line) {
+    for_each_line(stream, [&](std::string_view line) {
         lines.emplace_back(line);
+        return true;
     });
 }
 
