@@ -83,7 +83,8 @@ int main() {
 
             auto& prev = seen[pos_off_key];
 
-            if(prev != 0 && prev < pos.hl_so_far) {
+            // OMG IT WAS LITERALLY JUST LTE INSTEAD OF LT AHHHHHHHHHHHHHHHH
+            if(prev != 0 && prev <= pos.hl_so_far) {
                 // We've been in this exact pos and dx/dy before with a lower hl_so_far
                 continue;
             }
@@ -97,9 +98,11 @@ int main() {
         
         pos.hl_so_far += c;
 
+        #if 0
         if(xx == 2 && yy == 0) {
             std::cout << xx << ',' << yy << ',' << static_cast<int>(pos.dx) << ',' << static_cast<int>(pos.dy) << ',' << static_cast<int>(pos.hl_so_far) << '\n';
         }
+        #endif
 
         auto& prev_min = min_at_pos[xx + yy * w];
         
