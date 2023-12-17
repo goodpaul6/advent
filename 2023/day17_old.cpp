@@ -41,8 +41,55 @@ int main() {
     int w = blocks[0].size();
     int h = blocks.size();
 
-    std::unordered_map<int, int> min_at_pos;
-    std::unordered_map<std::string, int> seen;
+    struct HeatLossDir {
+        int hl_n = INT_MAX;
+        int hl_s = INT_MAX;
+        int hl_e = INT_MAX;
+        int hl_w = INT_MAX;
+    };
+
+    std::unordered_map<int, HeatLossDir> min_at_pos_dir;
+
+    auto try_put_min = [&](int x, int y, int dx, int dy, int hl) {
+        auto& prev = min_at_pos_dir[x + y * w];
+        
+        if(dx < 0 && hl < prev.hl_w) {
+            prev.hl_w = hl;
+            return true;
+        }
+
+        if(dx > 0 && hl < prev.hl_e) {
+            prev.hl_e = hl;
+            return true;
+        }
+
+        if(dy < 0 && hl < prev.hl_n) {
+            prev.hl_n = hl;
+            return true;
+        }
+
+        if(dy > 0 && hl < prev.hl_s) {
+            prev.hl_s = hl;
+            return true;
+        }
+
+        return false;
+    };
+
+    auto get_min = [&](int x, int y) {
+        auto& prev = min_at_pos_dir[x + y * w];
+
+        return std::min(
+            prev.hl_n,
+            std::min(
+                prev.hl_s,
+                std::min(
+                    prev.hl_e,
+                    prev.hl_w
+                )
+            )
+        );
+    };
 
     std::queue<PosOff> pos_offs;
 
@@ -73,39 +120,32 @@ int main() {
             continue;
         }
 
-        {
-            std::string pos_off_key;
-
-            int values[] = { pos.x, pos.y, pos.dx, pos.dy };
-
-            pos_off_key.resize(sizeof(values));
-            std::memcpy(pos_off_key.data(), values, sizeof(values));
-
-            auto& prev = seen[pos_off_key];
-
-            if(prev != 0 && prev < pos.hl_so_far) {
-                // We've been in this exact pos and dx/dy before with a lower hl_so_far
-                continue;
-            }
-
-            prev = pos.hl_so_far;
-        }
-
         // auto pos_s = pos.to_hashable_string();
   
         int c = blocks[yy][xx];
         
         pos.hl_so_far += c;
 
-        if(xx == 2 && yy == 0) {
-            std::cout << xx << ',' << yy << ',' << static_cast<int>(pos.dx) << ',' << static_cast<int>(pos.dy) << ',' << static_cast<int>(pos.hl_so_far) << '\n';
+        // std::cout << xx << ',' << yy << ',' << static_cast<int>(pos.dx) << ',' << static_cast<int>(pos.dy) << ',' << static_cast<int>(pos.hl_so_far) << '\n';
+
+        if(!try_put_min(xx, yy, pos.dx, pos.dy, pos.hl_so_far)) {
+            // There is a cheaper way to get here (GOING IN THE SAME DIRECTION), don't bother going down this path further
+            continue;
         }
 
-        auto& prev_min = min_at_pos[xx + yy * w];
+#if 0
+        auto& prev_min = min_at_pos_dir[xx + yy * w];
         
         if(prev_min == 0 || pos.hl_so_far < prev_min) {
             prev_min = pos.hl_so_far;
+        } else {
+
+            // FIXME(Apaar): Actually, the above is not sufficient. Sometimes, we have a path that
+            // costs more locally but allows us to curve around something that would cost more globally.
+            continue;
         }
+#endif
+
 
         // Bottom right corner
         if(xx == w - 1 && yy == h - 1) {
@@ -209,12 +249,21 @@ int main() {
 
     for(int y = 0; y < h; ++y) {
         for(int x = 0; x < w; ++x) {
-            std::cout << min_at_pos[x + y * w] << ',';
+            auto& raw_min = min_at_pos_dir[x + y * w];
+
+            auto nice = [](int n) {
+                return n == INT_MAX ? 0 : n;
+            };
+
+            std::cout << nice(raw_min.hl_e) << 'e' << 
+                         nice(raw_min.hl_w) << 'w' << 
+                         nice(raw_min.hl_n) << 'n' << 
+                         nice(raw_min.hl_s) << 's' << ',';
         }
         std::cout << '\n';
     }
 
-    std::cout << min_at_pos[(w - 1) + (h - 1) * w] << '\n';
+    std::cout << get_min((w - 1), (h - 1)) << '\n';
 
     return 0;
 }
