@@ -2,6 +2,7 @@ type pos = {
   row: int;
   col: int;
 }
+
 let lines =
   let ic = open_in "inputs/day11.txt" in
   let rec loop acc =
