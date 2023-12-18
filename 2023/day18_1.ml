@@ -1,7 +1,7 @@
 let dir_count_regex = Str.regexp "\\([RLDU]\\) \\([0-9]+\\)"
 
 let lines =
-  let ic = open_in "inputs/day18_ex.txt" in
+  let ic = open_in "inputs/day18.txt" in
   let rec loop acc =
     try
       let line = input_line ic in
@@ -73,13 +73,11 @@ let filled_array =
   let h = Array.length filled_array in
   let w = Array.length filled_array.(0) in
   try
-    for row = 0 to (h - 1) do
-      for col = 1 to (w - 1) do
-        if dug_array.(row).(col) = 0 && dug_array.(row).(col - 1) = 1 then
-          raise @@ FoundStartPos (row, col)
-        else
-          ();
-      done
+    for col = 0 to (w - 1) do
+      if dug_array.(1).(col) = 0 && dug_array.(0).(col) = 1 then
+        raise @@ FoundStartPos (1, col)
+      else
+        ();
     done;
     filled_array
   with FoundStartPos (row, col) ->
@@ -98,6 +96,7 @@ let filled_array =
       end
     done;
     filled_array
+
 let filled_area =
   Array.fold_left
     (fun acc elem ->
@@ -109,10 +108,10 @@ let filled_area =
 42859 too high 
 *)
 
-let () = Array.iter 
+(*let () = Array.iter 
   (fun elem -> 
     Array.iter print_int elem; 
     print_newline ()) 
-  filled_array
+  filled_array*)
 
 (*let () = Hashtbl.iter (fun (row, col) _ -> Printf.printf "%d,%d\n" row col) dug*)
