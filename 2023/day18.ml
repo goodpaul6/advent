@@ -1,17 +1,5 @@
 let dir_count_regex = Str.regexp "\\([RLDU]\\) \\([0-9]+\\)"
 
-let fold_each_match fn regex str init =
-  let rec aux acc col =
-    try
-      let match_col = Str.search_forward regex str col in
-      let str = Str.matched_string str in
-      let new_acc = fn acc (str, match_col) in
-      aux new_acc @@ match_col + String.length str
-    with _ ->
-      acc
-  in
-  aux init 0
-
 let lines =
   let ic = open_in "inputs/day18_ex.txt" in
   let rec loop acc =
@@ -78,32 +66,48 @@ let dug_array =
     dug;
   dug_array
 
+exception FoundStartPos of int * int
+
 let filled_array =
   let filled_array = Array.map Array.copy dug_array in
   let h = Array.length filled_array in
   let w = Array.length filled_array.(0) in
-  for row = 0 to (h - 1) do
-    let inside_ref = ref false in
-    for col = 0 to (w - 1) do
-      let inside = !inside_ref in
-      let dug_value = dug_array.(row).(col) in
-      let was_prev_dug = col > 0 && dug_array.(row).(col - 1) = 1 in
-      let next_inside = if dug_value = 1 && (not was_prev_dug) then not inside else inside in
-      if dug_value = 1 || inside then
-        filled_array.(row).(col) <- 1
-      else
-        ();
-      inside_ref := next_inside;
-    done
-  done;
-  filled_array
-
+  try
+    for row = 0 to (h - 1) do
+      for col = 1 to (w - 1) do
+        if dug_array.(row).(col) = 0 && dug_array.(row).(col - 1) = 1 then
+          raise @@ FoundStartPos (row, col)
+        else
+          ();
+      done
+    done;
+    filled_array
+  with FoundStartPos (row, col) ->
+    let queue = Queue.create () in
+    Queue.push (row, col) queue;
+    while not @@ Queue.is_empty queue do
+      let (row, col) = Queue.pop queue in
+      if row < 0 || row >= h || col < 0 || col >= w || filled_array.(row).(col) = 1 then
+        ()
+      else begin
+          filled_array.(row).(col) <- 1;
+          Queue.push (row - 1, col) queue;
+          Queue.push (row + 1, col) queue;
+          Queue.push (row, col - 1) queue;
+          Queue.push (row, col + 1) queue;
+      end
+    done;
+    filled_array
 let filled_area =
   Array.fold_left
     (fun acc elem ->
       acc + (Array.fold_left (+) 0 elem))
     0
     filled_array
+
+(*
+42859 too high 
+*)
 
 let () = Array.iter 
   (fun elem -> 
