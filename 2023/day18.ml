@@ -1,7 +1,7 @@
 let dir_count_regex = Str.regexp "\\(#[0-9a-f]+\\)"
 
 let lines =
-  let ic = open_in "inputs/day18_ex.txt" in
+  let ic = open_in "inputs/day18.txt" in
   let rec loop acc =
     try
       let line = input_line ic in
@@ -56,6 +56,37 @@ let dig_points =
   in
   loop [] 0 0 dig_instrs
   |> List.rev
+
+(* 952404941483 too low *)
+
+let pairs list =
+  let count = List.length list in
+  let seq = List.to_seq list |> Seq.cycle in
+  let a_seq = Seq.take count seq in
+  let b_seq = Seq.take count (Seq.drop 1 seq) in
+  Seq.zip a_seq b_seq
+
+let dig_perimeter =
+  List.fold_left
+    (fun sum { count; _ } ->
+      Int64.add sum (Int64.of_int count))
+    0L
+    dig_instrs
+
+let area points = 
+  let pairs = pairs points in
+  Int64.div (Seq.fold_left
+    (fun sum (a, b) ->
+      Int64.add sum @@ Int64.of_int ((a.x * b.y) - (b.x * a.y)))
+    0L
+    pairs
+  |> Int64.abs) 2L
+
+
+let dug_area =
+  Int64.add
+    (area dig_points)
+    (Int64.div dig_perimeter 2L)
 
 (*
 let dug =
@@ -146,5 +177,5 @@ let filled_area =
     print_newline ()) 
   filled_array*)
 
-(*let () = Hashtbl.iter (fun (row, col) _ -> Printf.printf "%d,%d\n" row col) dug*)
+(*let () = Hashtbl.iter (fun (row, col) _ -> Printf.printf "%d,%d\n" row col) dug *)
 *)
