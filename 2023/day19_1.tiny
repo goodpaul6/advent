@@ -1,0 +1,247 @@
+input_contents := read_file("inputs/day19.txt")
+
+func split_by_char(input: str, ch: int): array {
+    // Necessary because mutating arguments doesn't work haha
+    s := input
+    parts := array()
+
+    while true {
+        end_of_part_pos := strchr(s, ch)
+        part := substr(s, 0, end_of_part_pos)
+
+        array_push(parts, part)
+
+        if end_of_part_pos == -1 {
+            break
+        }
+        
+        s = substr(s, end_of_part_pos + 1, -1)
+    }
+
+    return parts
+}
+
+struct Rule {
+    cat: int
+    op: int
+    value: int
+    target: str
+}
+
+struct Workflow {
+    name: str
+    predicate_rules: array
+    default_target: str
+}
+
+// Example workflow: `px{a<2006:qkq,m>2090:A,rfg}`
+func parse_workflow(line: str): Workflow {
+    rules_start_pos := strchr(line, '{')
+    rules_end_pos := strchr(line, '}')
+
+    name := substr(line, 0, rules_start_pos)
+    rules_str := substr(line, rules_start_pos + 1, rules_end_pos)
+    
+    rules_strs := split_by_char(rules_str, ',')
+
+    predicate_rules := array()
+    default_target := ""
+
+    for i := 0; i < array_len(rules_strs); i += 1 {
+        rule_str: str = array_get(rules_strs, i)
+
+        // Predicate rules have a colon
+        colon_pos := strchr(rule_str, ':')
+
+        if colon_pos == -1 {
+            default_target = rule_str
+            continue
+        }
+
+        rule_parts := split_by_char(rule_str, ':')
+
+        predicate_str: str = array_get(rule_parts, 0) 
+
+        cat := stridx(predicate_str, 0)
+        op := stridx(predicate_str, 1)
+        value := stoi(substr(predicate_str, 2, -1), 10)
+        target: str = array_get(rule_parts, 1)
+
+        array_push(predicate_rules, new Rule{cat, op, value, target})
+    }
+
+    return new Workflow{name, predicate_rules, default_target}
+}
+
+func print_workflow(workflow: Workflow) {
+    printf("%s{", workflow.name)
+
+    for i := 0; i < array_len(workflow.predicate_rules); i += 1 {
+        rule: Rule = array_get(workflow.predicate_rules, i)
+
+        printf("%c%c%i:%s", rule.cat, rule.op, rule.value, rule.target)
+    }
+    
+    printf(",%s}\n", workflow.default_target)
+}
+
+struct CatValue {
+    cat: int
+    value: int
+}
+
+struct Part {
+    cat_values: array
+}
+
+// Part example: {x=787,m=2655,a=1222,s=2876}
+func parse_part(line: str): Part {
+    sub := substr(line, 1, strlen(line) - 1)
+
+    cat_strs := split_by_char(sub, ',')
+
+    cat_values := array()
+
+    for i := 0; i < array_len(cat_strs); i += 1 {
+        cat_value_str: str = array_get(cat_strs, i)
+
+        cat := stridx(cat_value_str, 0)
+        value := stoi(substr(cat_value_str, 2, -1), 10)
+
+        array_push(cat_values, new CatValue{cat, value})    
+    }
+
+    return new Part{cat_values}
+}
+
+func value_for_cat(cat_values: array, cat: int): int {
+    len := array_len(cat_values)
+
+    for i := 0; i < len; i += 1 {
+        cv: CatValue = array_get(cat_values, i)
+
+        if cv.cat == cat {
+            return cv.value
+        }
+    }
+
+    return -1
+}
+
+func find_workflow_by_name(workflows: array, name: str): Workflow {
+    len := array_len(workflows)
+
+    for i := 0; i < len; i += 1 {
+        workflow: Workflow = array_get(workflows, i)
+
+        if workflow.name == name {
+            return workflow
+        }
+    }
+    
+    return null
+}
+
+func is_accepted(part: Part, workflows: array): bool {
+    cur_workflow := find_workflow_by_name(workflows, "in")
+
+    while true {
+        pred_rule_count := array_len(cur_workflow.predicate_rules)
+
+        match_result: str = null
+
+        for i := 0; i < pred_rule_count; i += 1 {
+            pred_rule: Rule = array_get(cur_workflow.predicate_rules, i)
+
+            value := value_for_cat(part.cat_values, pred_rule.cat)
+            match := false
+
+            if pred_rule.op == '<' {
+                match = value < pred_rule.value 
+            } else {
+                match = value > pred_rule.value
+            }
+
+            if match {
+                match_result = pred_rule.target
+                break
+            }
+        }
+
+        if match_result == null {
+            match_result = cur_workflow.default_target
+        }
+
+        if match_result == "A" {
+            return true
+        } else if match_result == "R" {
+            return false 
+        }
+
+        cur_workflow = find_workflow_by_name(workflows, match_result)
+    }    
+
+    // Should never get here
+    return false
+}
+
+func print_part(part: Part) {
+    printf("{")
+    
+    first := true
+
+    for i := 0; i < array_len(part.cat_values); i += 1 {
+        if !first {
+            printf(",")
+        }
+
+        first = false
+
+        cat_value: CatValue = array_get(part.cat_values, i)
+
+        printf("%c=%i", cat_value.cat, cat_value.value)
+    }
+
+    printf("}\n")
+}
+
+lines := split_by_char(input_contents, '\n')
+
+parts := array()
+workflows := array()
+
+for i := 0; i < array_len(lines); i += 1 {
+    line: str = array_get(lines, i)
+
+    if strlen(line) == 0 {
+        continue
+    }
+
+    if stridx(line, 0) == '{' { 
+        part := parse_part(line)
+        print_part(part) 
+
+        array_push(parts, part)
+    } else {
+        workflow := parse_workflow(line)
+        print_workflow(workflow)
+
+        array_push(workflows, workflow)
+    }
+}
+
+total := 0
+
+for i = 0; i < array_len(parts); i += 1 {
+    part = array_get(parts, i)
+
+    if is_accepted(part, workflows) {
+        for j := 0; j < array_len(part.cat_values); j += 1 {
+            cv: CatValue = array_get(part.cat_values, j)
+
+            total += cv.value
+        }
+    }
+}
+
+printf("total=%i\n", total)
