@@ -349,12 +349,12 @@ func count_accepted_perms(workflows: array): i64 {
             continue
         }
 
-        //printf("->%s\n", i64_to_string(cand_perms))
+        perms_str := i64_to_string(cand_perms)
+
+        print_part_bounds(cand.pb) 
+        printf("->%s\n", perms_str)
 
         if cand.target == "A" {
-            print_part_bounds(cand.pb) 
-            printf("\n")
-
             total_perms = i64_add_many(total_perms, cand_perms)
             continue
         } else if cand.target == "R" {
@@ -365,13 +365,16 @@ func count_accepted_perms(workflows: array): i64 {
 
         // These are the bounds if we want no match
         no_match_bounds := copy_part_bounds(cand.pb)
-        match_bounds := copy_part_bounds(cand.pb)
 
         pred_rule_count := array_len(workflow.predicate_rules)
 
         for i := 0; i < pred_rule_count; i += 1 {
             pred_rule: Rule = array_get(workflow.predicate_rules, i)
-
+        
+            // We want to start with the no match bounds since we do not want to match our
+            // the previous workflows
+            match_bounds := copy_part_bounds(no_match_bounds)
+            
             restrict_part_bounds(match_bounds, pred_rule.cat, pred_rule.op, pred_rule.value, false)
 
             array_push(pbw_cands, new PartBoundsTarget{
