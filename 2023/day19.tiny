@@ -1,29 +1,97 @@
 input_contents := read_file("inputs/day19_ex.txt")
 
-func split_lines(input: str): array {
+func split_by_char(input: str, ch: int): array {
     // Necessary because mutating arguments doesn't work haha
     s := input
-    lines := array()
-    lines_len := strlen(s)
+    parts := array()
 
     while true {
-        end_of_line_pos := strchr(s, '\n')
-        line := substr(s, 0, end_of_line_pos)
+        end_of_part_pos := strchr(s, ch)
+        part := substr(s, 0, end_of_part_pos)
 
-        array_push(lines, line)
+        array_push(parts, part)
 
-        if end_of_line_pos == -1 {
+        if end_of_part_pos == -1 {
             break
         }
         
-        s = substr(s, end_of_line_pos + 1, -1)
+        s = substr(s, end_of_part_pos + 1, -1)
     }
 
-    return lines
+    return parts
 }
 
-lines := split_lines(input_contents)
+struct Rule {
+    cat: int
+    op: int
+    value: int
+    target: str
+}
+
+struct Workflow {
+    name: str
+    predicate_rules: array
+    default_target: str
+}
+
+// Example workflow: `px{a<2006:qkq,m>2090:A,rfg}`
+func parse_workflow(line: str): Workflow {
+    rules_start_pos := strchr(line, '{')
+    rules_end_pos := strchr(line, '}')
+
+    name := substr(line, 0, rules_start_pos)
+    rules_str := substr(line, rules_start_pos + 1, rules_end_pos)
+    
+    rules_strs := split_by_char(rules_str, ',')
+
+    predicate_rules := array()
+    default_target := ""
+
+    for i := 0; i < array_len(rules_strs); i += 1 {
+        rule_str: str = array_get(rules_strs, i)
+
+        // Predicate rules have a colon
+        colon_pos := strchr(rule_str, ':')
+
+        if colon_pos == -1 {
+            default_target = rule_str
+            continue
+        }
+
+        rule_parts := split_by_char(rule_str, ':')
+
+        predicate_str: str = array_get(rule_parts, 0) 
+
+        cat := stridx(predicate_str, 0)
+        op := stridx(predicate_str, 1)
+        value := stoi(substr(predicate_str, 2, -1), 10)
+        target: str = array_get(rule_parts, 1)
+
+        array_push(predicate_rules, new Rule{cat, op, value, target})
+    }
+
+    return new Workflow{name, predicate_rules, default_target}
+}
+
+func print_workflow(workflow: Workflow) {
+    printf("%s{", workflow.name)
+
+    for i := 0; i < array_len(workflow.predicate_rules); i += 1 {
+        rule: Rule = array_get(workflow.predicate_rules, i)
+
+        printf("%c%c%i:%s", rule.cat, rule.op, rule.value, rule.target)
+    }
+    
+    printf(",%s}\n", workflow.default_target)
+}
+
+lines := split_by_char(input_contents, '\n')
 
 for i := 0; i < array_len(lines); i += 1 {
-    printf("%s\n", array_get(lines, i))
+    line: str = array_get(lines, i)
+
+    if strlen(line) > 0 && stridx(line, 0) != '{' { 
+        workflow := parse_workflow(line)
+        print_workflow(workflow)
+    }
 }
