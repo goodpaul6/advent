@@ -1,4 +1,4 @@
-input_contents := read_file("inputs/day19_ex.txt")
+input_contents := read_file("inputs/day19.txt")
 
 func split_by_char(input: str, ch: int): array {
     // Necessary because mutating arguments doesn't work haha
