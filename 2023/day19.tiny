@@ -1,0 +1,29 @@
+input_contents := read_file("inputs/day19_ex.txt")
+
+func split_lines(input: str): array {
+    // Necessary because mutating arguments doesn't work haha
+    s := input
+    lines := array()
+    lines_len := strlen(s)
+
+    while true {
+        end_of_line_pos := strchr(s, '\n')
+        line := substr(s, 0, end_of_line_pos)
+
+        array_push(lines, line)
+
+        if end_of_line_pos == -1 {
+            break
+        }
+        
+        s = substr(s, end_of_line_pos + 1, -1)
+    }
+
+    return lines
+}
+
+lines := split_lines(input_contents)
+
+for i := 0; i < array_len(lines); i += 1 {
+    printf("%s\n", array_get(lines, i))
+}
