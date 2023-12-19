@@ -85,12 +85,68 @@ func print_workflow(workflow: Workflow) {
     printf(",%s}\n", workflow.default_target)
 }
 
+struct CatValue {
+    cat: int
+    value: int
+}
+
+struct Part {
+    cat_values: array
+}
+
+// Part example: {x=787,m=2655,a=1222,s=2876}
+func parse_part(line: str): Part {
+    sub := substr(line, 1, strlen(line) - 1)
+
+    cat_strs := split_by_char(sub, ',')
+
+    cat_values := array()
+
+    for i := 0; i < array_len(cat_strs); i += 1 {
+        cat_value_str: str = array_get(cat_strs, i)
+
+        cat := stridx(cat_value_str, 0)
+        value := stoi(substr(cat_value_str, 2, -1), 10)
+
+        array_push(cat_values, new CatValue{cat, value})    
+    }
+
+    return new Part{cat_values}
+}
+
+func print_part(part: Part) {
+    printf("{")
+    
+    first := true
+
+    for i := 0; i < array_len(part.cat_values); i += 1 {
+        if !first {
+            printf(",")
+        }
+
+        first = false
+
+        cat_value: CatValue = array_get(part.cat_values, i)
+
+        printf("%c=%i", cat_value.cat, cat_value.value)
+    }
+
+    printf("}\n")
+}
+
 lines := split_by_char(input_contents, '\n')
 
 for i := 0; i < array_len(lines); i += 1 {
     line: str = array_get(lines, i)
 
-    if strlen(line) > 0 && stridx(line, 0) != '{' { 
+    if strlen(line) == 0 {
+        continue
+    }
+
+    if stridx(line, 0) == '{' { 
+        part := parse_part(line)
+        print_part(part) 
+    } else {
         workflow := parse_workflow(line)
         print_workflow(workflow)
     }
