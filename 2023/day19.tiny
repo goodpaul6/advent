@@ -1,4 +1,4 @@
-input_contents := read_file("inputs/day19_ex.txt")
+input_contents := read_file("inputs/day19.txt")
 
 func split_by_char(input: str, ch: int): array {
     // Necessary because mutating arguments doesn't work haha
@@ -351,8 +351,8 @@ func count_accepted_perms(workflows: array): i64 {
 
         perms_str := i64_to_string(cand_perms)
 
-        print_part_bounds(cand.pb) 
-        printf("->%s\n", perms_str)
+        //print_part_bounds(cand.pb) 
+        //printf("->%s\n", perms_str)
 
         if cand.target == "A" {
             total_perms = i64_add_many(total_perms, cand_perms)
