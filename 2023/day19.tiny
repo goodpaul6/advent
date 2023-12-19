@@ -1,4 +1,4 @@
-input_contents := read_file("inputs/day19.txt")
+input_contents := read_file("inputs/day19_ex.txt")
 
 func split_by_char(input: str, ch: int): array {
     // Necessary because mutating arguments doesn't work haha
@@ -114,11 +114,11 @@ func parse_part(line: str): Part {
     return new Part{cat_values}
 }
 
-func value_for_cat(cat_values: array, cat: int): int {
-    len := array_len(cat_values)
+func value_for_cat(part: Part, cat: int): int {
+    len := array_len(part.cat_values)
 
     for i := 0; i < len; i += 1 {
-        cv: CatValue = array_get(cat_values, i)
+        cv: CatValue = array_get(part.cat_values, i)
 
         if cv.cat == cat {
             return cv.value
@@ -153,7 +153,7 @@ func is_accepted(part: Part, workflows: array): bool {
         for i := 0; i < pred_rule_count; i += 1 {
             pred_rule: Rule = array_get(cur_workflow.predicate_rules, i)
 
-            value := value_for_cat(part.cat_values, pred_rule.cat)
+            value := value_for_cat(part, pred_rule.cat)
             match := false
 
             if pred_rule.op == '<' {
@@ -205,6 +205,193 @@ func print_part(part: Part) {
     printf("}\n")
 }
 
+// Cases:
+// Let input_bounds be bounds that result in entering the workflow
+// input_bounds are {1<=x<=4000, 1<=m<=4000, ...} for `in`
+// - Default target is "A" -> restrict input_bounds such that it gets rejected by all rules; if possible,
+//   add the perms for these bounds to total combos
+// - One of the predicate targets is "A" -> restrict input bounds such that it matches predicate,
+//   add the perms for these bounds to total combos
+// - Default target is another workflow -> restrict input_bounds such that it gets rejected by all rules,
+//   visit this new workflow with these input_bounds in mind
+// - One of the predicate targets is a workflow -> restrict input bounds such that it matches the predicate,
+//   visit the target workflow
+
+struct CatValueBounds {
+    cat: int
+    min_value: int
+    max_value: int
+}
+
+struct PartBounds {
+    cvb_array: array
+}
+
+func find_cat_value_bounds(pb: PartBounds, cat: int): CatValueBounds {
+    len := array_len(pb.cvb_array)
+
+    for i := 0; i < len; i += 1 {
+        cvb: CatValueBounds = array_get(pb.cvb_array, i)
+
+        if cvb.cat == cat {
+            return cvb
+        }
+    }
+    
+    return null
+}
+
+func perms_for_part_bounds(pb: PartBounds): i64 { 
+    perms := int_to_i64(1)
+    len := array_len(pb.cvb_array)
+
+    for i := 0; i < len; i += 1 {
+        cvb: CatValueBounds = array_get(pb.cvb_array, i)
+
+        possible_values := (cvb.max_value - cvb.min_value) + 1
+
+        if possible_values <= 0 {
+            return 0
+        }
+
+        perms = i64_mul_many(perms, int_to_i64(possible_values))
+    }
+
+    return perms
+}
+
+func start_part_bounds(): PartBounds { 
+    cvb_array := array()
+
+    array_push(cvb_array, new CatValueBounds{'x', 1, 4000})
+    array_push(cvb_array, new CatValueBounds{'m', 1, 4000})
+    array_push(cvb_array, new CatValueBounds{'a', 1, 4000})
+    array_push(cvb_array, new CatValueBounds{'s', 1, 4000})
+
+    return new PartBounds{cvb_array}
+}
+
+func copy_part_bounds(pb: PartBounds): PartBounds {
+    copy_cvb_array := array()
+    len := array_len(pb.cvb_array)
+
+    for i := 0; i < len; i += 1 {
+        cvb: CatValueBounds = array_get(pb.cvb_array, i)
+
+        array_push(copy_cvb_array, new CatValueBounds{
+            cvb.cat,
+            cvb.min_value,
+            cvb.max_value
+        })
+    }
+
+    return new PartBounds{copy_cvb_array}
+}
+
+func restrict_part_bounds(pb: PartBounds, cat: int, op: int, value: int, invert: bool) {
+    cvb := find_cat_value_bounds(pb, cat)    
+
+    if op == '<' {
+        if invert {
+            if cvb.min_value < value {
+                cvb.min_value = value
+            }
+        } else if cvb.max_value >= value {
+            cvb.max_value = value - 1
+        }
+    } else {
+        if invert {
+            if cvb.max_value > value {
+                cvb.max_value = value
+            }
+        } else if cvb.min_value <= value {
+            cvb.min_value = value + 1
+        }
+    }
+}
+
+struct PartBoundsTarget {
+    pb: PartBounds
+    target: str
+}
+
+func print_part_bounds(pb: PartBounds) {
+    printf("{")
+    len := array_len(pb.cvb_array)
+
+    for i := 0; i < len; i += 1 {
+        cvb: CatValueBounds = array_get(pb.cvb_array, i)
+
+        printf("%i<=%c<=%i, ", cvb.min_value, cvb.cat, cvb.max_value)
+    }
+
+    printf("}")
+}
+
+func count_accepted_perms(workflows: array): i64 {
+    total_perms := int_to_i64(0)
+
+    // Stack of candidates
+    pbw_cands := array()
+
+    array_push(pbw_cands, new PartBoundsTarget{
+        start_part_bounds(),
+        "in"
+    })
+
+    while array_len(pbw_cands) > 0 {
+        cand: PartBoundsTarget = array_pop(pbw_cands)     
+        
+        cand_perms := perms_for_part_bounds(cand.pb)
+        
+        if cand_perms == 0 {
+            // Don't bother exploring impossible paths
+            continue
+        }
+
+        //printf("->%s\n", i64_to_string(cand_perms))
+
+        if cand.target == "A" {
+            print_part_bounds(cand.pb) 
+            printf("\n")
+
+            total_perms = i64_add_many(total_perms, cand_perms)
+            continue
+        } else if cand.target == "R" {
+            continue
+        }
+        
+        workflow := find_workflow_by_name(workflows, cand.target)
+
+        // These are the bounds if we want no match
+        no_match_bounds := copy_part_bounds(cand.pb)
+        match_bounds := copy_part_bounds(cand.pb)
+
+        pred_rule_count := array_len(workflow.predicate_rules)
+
+        for i := 0; i < pred_rule_count; i += 1 {
+            pred_rule: Rule = array_get(workflow.predicate_rules, i)
+
+            restrict_part_bounds(match_bounds, pred_rule.cat, pred_rule.op, pred_rule.value, false)
+
+            array_push(pbw_cands, new PartBoundsTarget{
+                match_bounds,
+                pred_rule.target
+            })
+
+            // Restrict the no match bounds as we go, using the invert parameter to invert the predicate
+            restrict_part_bounds(no_match_bounds, pred_rule.cat, pred_rule.op, pred_rule.value, true) 
+        }
+
+        array_push(pbw_cands, new PartBoundsTarget{
+            no_match_bounds,
+            workflow.default_target   
+        })
+    }
+
+    return total_perms
+}
+
 lines := split_by_char(input_contents, '\n')
 
 parts := array()
@@ -230,18 +417,6 @@ for i := 0; i < array_len(lines); i += 1 {
     }
 }
 
-total := 0
+perms := count_accepted_perms(workflows)
 
-for i = 0; i < array_len(parts); i += 1 {
-    part = array_get(parts, i)
-
-    if is_accepted(part, workflows) {
-        for j := 0; j < array_len(part.cat_values); j += 1 {
-            cv: CatValue = array_get(part.cat_values, j)
-
-            total += cv.value
-        }
-    }
-}
-
-printf("total=%i\n", total)
+printf("perms=%s\n", i64_to_string(perms))
