@@ -1,0 +1,242 @@
+OP_BROADCAST :: '-'
+OP_FLIP_FLOP :: '%'
+OP_CONJ :: '&'
+
+STATE_HIGH :: 1
+STATE_LOW :: 0
+
+struct Module {
+    op: int
+    name: str
+    targets: array_str
+    
+    flip_flop_state: int
+    conj_input_name_to_state: dict_str_int
+}
+
+input_contents := read_file("inputs/day20.txt")
+
+func split_by_char(input: str, ch: int, max_split: int): array_str {
+    // Necessary because mutating arguments doesn't work haha
+    s := input
+    parts := array_str()
+
+    while true {
+        end_of_part_pos := strchr(s, ch)
+
+        if max_split > 0 && array_str_len(parts) == max_split - 1 {
+            end_of_part_pos = -1
+        }
+
+        part := substr(s, 0, end_of_part_pos)
+
+        array_str_push(parts, part)
+
+        if end_of_part_pos == -1 {
+            break
+        }
+        
+        s = substr(s, end_of_part_pos + 1, -1)
+    }
+
+    return parts
+}
+
+// Examples:
+// broadcaster -> a, b, c
+// %a -> b
+func parse_module(line: str): Module {
+    parts := split_by_char(line, ' ', 3)
+    
+    name := array_str_get(parts, 0)
+    targets_str := array_str_get(parts, 2)
+
+    targets := split_by_char(targets_str, ',', 0)
+    len := array_str_len(targets)
+
+    for i := 0; i < len; i += 1 {
+        s := array_str_get(targets, i)
+
+        if stridx(s, 0) == ' ' {
+            array_str_set(targets, i, substr(s, 1, -1))
+        }
+    }
+
+    op := OP_BROADCAST
+
+    if stridx(name, 0) == OP_FLIP_FLOP {
+        op = OP_FLIP_FLOP        
+    } else if stridx(name, 0) == OP_CONJ {
+        op = OP_CONJ
+    }
+
+    if op != OP_BROADCAST {
+        name = substr(name, 1, -1)
+    }
+
+    printf("%c%s -> %q\n", op, name, targets)
+
+    return new Module{
+        op,
+        name,
+        targets,
+        STATE_LOW,
+        cast(null, dict_str_int)
+    }
+}
+
+func find_module_by_name(modules: array, name: str): Module { 
+    for i := 0; i < array_len(modules); i += 1 {
+        module: Module = array_get(modules, i)
+
+        if module.name == name {
+            return module
+        }
+    }
+ 
+    return null
+}
+
+func array_str_index_of(strs: array_str, s: str): int {
+    for i := 0; i < array_str_len(strs); i += 1 {
+        if array_str_get(strs, i) == s {
+            return i
+        }
+    } 
+
+    return -1
+}
+
+func init_conj_input_states(modules: array) {
+    for i := 0; i < array_len(modules); i += 1 {
+        m: Module = array_get(modules, i)
+
+        if m.op != OP_CONJ {
+            continue
+        }
+
+        m.conj_input_name_to_state = dict_str_int()
+
+        for j := 0; j < array_len(modules); j += 1 {
+            if i == j {
+                continue
+            }
+
+            // Other module immediately connects to our conj module above
+            om: Module = array_get(modules, j)
+
+            if array_str_index_of(om.targets, m.name) >= 0 {
+                dict_str_int_put(m.conj_input_name_to_state, om.name, STATE_LOW)
+            }
+        }
+    }
+}
+
+struct ButtonResult {
+    low_count: int
+    high_count: int
+}
+
+struct Pulse {
+    sender: str
+    state: int
+    target: str
+}
+
+func send_pulse_to_targets(pulses: array, sender: str, state: int, targets: array_str) {
+    len := array_str_len(targets)
+
+    for i := 0; i < len; i += 1 {
+        target := array_str_get(targets, i)
+        array_push(pulses, new Pulse{sender, state, target})
+    }
+}
+
+func push_button(modules: array): ButtonResult {
+    low_count := 0
+    high_count := 0
+
+    pulses := array()
+
+    array_push(
+        pulses,
+        new Pulse{"", STATE_LOW, "broadcaster"}
+    )
+
+    while array_len(pulses) > 0 {
+        pulse: Pulse = array_pop(pulses)
+
+        if pulse.state == STATE_LOW {
+            low_count += 1
+        } else {
+            high_count += 1
+        }
+    
+        m := find_module_by_name(modules, pulse.target) 
+
+        if m == null {
+            continue
+        }
+
+        if m.op == OP_BROADCAST {
+            send_pulse_to_targets(pulses, m.name, pulse.state, m.targets)
+        } else if m.op == OP_FLIP_FLOP {
+            if pulse.state == STATE_LOW {
+                if m.flip_flop_state == STATE_LOW {
+                    m.flip_flop_state = STATE_HIGH
+                    send_pulse_to_targets(pulses, m.name, STATE_HIGH, m.targets)
+                } else {
+                    m.flip_flop_state = STATE_LOW
+                    send_pulse_to_targets(pulses, m.name, STATE_LOW, m.targets)
+                }
+            } else {
+                // Flip flops ignore high pulses
+            }
+        } else if m.op == OP_CONJ {
+            dict_str_int_put(m.conj_input_name_to_state, pulse.sender, pulse.state)
+            
+            keys := dict_str_int_keys(m.conj_input_name_to_state)
+            
+            all_high := true
+
+            for i := 0; i < array_str_len(keys); i += 1 {
+                key := array_str_get(keys, i)
+
+                if dict_str_int_get(m.conj_input_name_to_state, key) == STATE_LOW {
+                    all_high = false
+                    break
+                }
+            }
+
+            if all_high {
+                send_pulse_to_targets(pulses, m.name, STATE_LOW, m.targets)
+            } else {
+                send_pulse_to_targets(pulses, m.name, STATE_HIGH, m.targets)
+            }
+        }
+    }
+
+    return new ButtonResult{low_count, high_count} 
+}
+
+lines := split_by_char(input_contents, '\n', 0)
+modules := array()
+
+for i := 0; i < array_str_len(lines); i += 1 {
+    array_push(modules, parse_module(array_str_get(lines, i)))
+}
+
+printf("%q\n", modules)
+
+init_conj_input_states(modules)
+
+total := new ButtonResult{0, 0}
+
+for i = 0; i < 1000; i += 1 {
+    res := push_button(modules)
+
+    total.low_count += res.low_count
+    total.high_count += res.high_count
+}
+
+printf("%q\n", total)
