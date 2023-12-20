@@ -74,6 +74,8 @@ func parse_module(line: str): Module {
         name = substr(name, 1, -1)
     }
 
+    printf("%c%s -> %q\n", op, name, targets)
+
     return new Module{
         op,
         name,
@@ -217,49 +219,6 @@ func push_button(modules: array): ButtonResult {
     return new ButtonResult{low_count, high_count} 
 }
 
-func array_has(arr: array, obj: any): bool {
-    len := array_len(arr)
-
-    for i := 0; i < len; i += 1 {
-        if array_get(arr, i) == obj {
-            return true
-        }
-    }
-    
-    return false
-}
-
-func filter_modules_to_rx_only(modules: array): array {
-    rx_only := array() 
-    len := array_len(modules)
-    
-    cands := array_str()
-    array_str_push(cands, "rx")
-
-    while array_str_len(cands) > 0 {
-        cand := array_str_pop(cands)
-        
-        for i := 0; i < len; i += 1 {
-            other_m: Module = array_get(modules, i)
-
-            if other_m.name == cand {
-                continue
-            }
-
-            if array_str_index_of(other_m.targets, cand) >= 0 {
-                if !array_has(rx_only, other_m) {
-                    array_push(rx_only, other_m)
-
-                    // Keep following the path
-                    array_str_push(cands, other_m.name)
-                }
-            }
-        }
-    }
-
-    return rx_only
-}
-
 lines := split_by_char(input_contents, '\n', 0)
 modules := array()
 
@@ -267,24 +226,17 @@ for i := 0; i < array_str_len(lines); i += 1 {
     array_push(modules, parse_module(array_str_get(lines, i)))
 }
 
-// Not helpful, doesn't actually end up filtering any modules
-// rx_only := filter_modules_to_rx_only(modules)
-// printf("orig len = %i, filtered len = %i\n", array_len(modules), array_len(rx_only))
+printf("%q\n", modules)
 
-// Maybe start at `rx` low and then work backwards?
+init_conj_input_states(modules)
 
-// This is the module which leads to rx in my input
-zh := find_module_by_name(modules, "zh")
+total := new ButtonResult{0, 0}
 
-// init_conj_input_states(modules)
-// 
-// total := new ButtonResult{0, 0}
-// 
-// for i = 0; i < 1000; i += 1 {
-//     res := push_button(modules)
-// 
-//     total.low_count += res.low_count
-//     total.high_count += res.high_count
-// }
-// 
-// printf("%q\n", total)
+for i = 0; i < 1000; i += 1 {
+    res := push_button(modules)
+
+    total.low_count += res.low_count
+    total.high_count += res.high_count
+}
+
+printf("%q\n", total)
