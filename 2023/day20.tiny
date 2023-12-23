@@ -11,7 +11,7 @@ struct Module {
     targets: array_str
     
     flip_flop_state: int
-    conj_input_name_to_state: dict_str_int
+    input_name_to_state: dict_str_int
 }
 
 input_contents := read_file("inputs/day20.txt")
@@ -105,15 +105,15 @@ func array_str_index_of(strs: array_str, s: str): int {
     return -1
 }
 
-func init_conj_input_states(modules: array) {
+func init_input_states(modules: array) {
     for i := 0; i < array_len(modules); i += 1 {
         m: Module = array_get(modules, i)
 
-        if m.op != OP_CONJ {
+        if m.op == OP_BROADCAST {
             continue
         }
 
-        m.conj_input_name_to_state = dict_str_int()
+        m.input_name_to_state = dict_str_int()
 
         for j := 0; j < array_len(modules); j += 1 {
             if i == j {
@@ -124,7 +124,7 @@ func init_conj_input_states(modules: array) {
             om: Module = array_get(modules, j)
 
             if array_str_index_of(om.targets, m.name) >= 0 {
-                dict_str_int_put(m.conj_input_name_to_state, om.name, STATE_LOW)
+                dict_str_int_put(m.input_name_to_state, om.name, STATE_LOW)
             }
         }
     }
@@ -150,74 +150,8 @@ func send_pulse_to_targets(pulses: array, sender: str, state: int, targets: arra
     }
 }
 
-func push_button(modules: array): ButtonResult {
-    low_count := 0
-    high_count := 0
-
-    pulses := array()
-
-    array_push(
-        pulses,
-        new Pulse{"", STATE_LOW, "broadcaster"}
-    )
-
-    while array_len(pulses) > 0 {
-        pulse: Pulse = array_pop(pulses)
-
-        if pulse.state == STATE_LOW {
-            low_count += 1
-        } else {
-            high_count += 1
-        }
-    
-        m := find_module_by_name(modules, pulse.target) 
-
-        if m == null {
-            continue
-        }
-
-        if m.op == OP_BROADCAST {
-            send_pulse_to_targets(pulses, m.name, pulse.state, m.targets)
-        } else if m.op == OP_FLIP_FLOP {
-            if pulse.state == STATE_LOW {
-                if m.flip_flop_state == STATE_LOW {
-                    m.flip_flop_state = STATE_HIGH
-                    send_pulse_to_targets(pulses, m.name, STATE_HIGH, m.targets)
-                } else {
-                    m.flip_flop_state = STATE_LOW
-                    send_pulse_to_targets(pulses, m.name, STATE_LOW, m.targets)
-                }
-            } else {
-                // Flip flops ignore high pulses
-            }
-        } else if m.op == OP_CONJ {
-            dict_str_int_put(m.conj_input_name_to_state, pulse.sender, pulse.state)
-            
-            keys := dict_str_int_keys(m.conj_input_name_to_state)
-            
-            all_high := true
-
-            for i := 0; i < array_str_len(keys); i += 1 {
-                key := array_str_get(keys, i)
-
-                if dict_str_int_get(m.conj_input_name_to_state, key) == STATE_LOW {
-                    all_high = false
-                    break
-                }
-            }
-
-            if all_high {
-                send_pulse_to_targets(pulses, m.name, STATE_LOW, m.targets)
-            } else {
-                send_pulse_to_targets(pulses, m.name, STATE_HIGH, m.targets)
-            }
-        }
-    }
-
-    return new ButtonResult{low_count, high_count} 
-}
-
-func array_has(arr: array, obj: any): bool {
+func array_has_impl(arr_any: any, obj: any): bool {
+    arr := cast(arr_any, array)
     len := array_len(arr)
 
     for i := 0; i < len; i += 1 {
@@ -229,35 +163,12 @@ func array_has(arr: array, obj: any): bool {
     return false
 }
 
-func filter_modules_to_rx_only(modules: array): array {
-    rx_only := array() 
-    len := array_len(modules)
-    
-    cands := array_str()
-    array_str_push(cands, "rx")
+func array_has(arr: array_str, obj: any): bool {
+    return array_has_impl(arr, obj)
+}
 
-    while array_str_len(cands) > 0 {
-        cand := array_str_pop(cands)
-        
-        for i := 0; i < len; i += 1 {
-            other_m: Module = array_get(modules, i)
-
-            if other_m.name == cand {
-                continue
-            }
-
-            if array_str_index_of(other_m.targets, cand) >= 0 {
-                if !array_has(rx_only, other_m) {
-                    array_push(rx_only, other_m)
-
-                    // Keep following the path
-                    array_str_push(cands, other_m.name)
-                }
-            }
-        }
-    }
-
-    return rx_only
+func array_str_has(arr: array_str, str: str): bool {
+    return array_has_impl(arr, str)
 }
 
 lines := split_by_char(input_contents, '\n', 0)
@@ -273,8 +184,92 @@ for i := 0; i < array_str_len(lines); i += 1 {
 
 // Maybe start at `rx` low and then work backwards?
 
-// This is the module which leads to rx in my input
-zh := find_module_by_name(modules, "zh")
+func derive_low_pulse(modules: array) {
+    pulses := array()
+
+    array_push(pulses, new Pulse{
+        "zh",
+        STATE_LOW,
+        "rx"
+    })
+
+    len := array_len(modules)
+
+    while array_len(pulses) > 0 {
+        pulse: Pulse = array_pop(pulses)
+
+        printf("Expected %i at %s from %s\n", pulse.state, pulse.target, pulse.sender)
+
+        m: Module = null
+
+        if pulse.sender == "" {
+            for i := 0; i < len; i += 1 {
+                other_m: Module = array_get(modules, i)
+
+                if other_m.name == pulse.target {
+                    continue
+                }
+
+                if !array_has(other_m.targets, pulse.target) {
+                    continue
+                }
+
+                m = other_m
+                break
+            }
+        } else {
+            m = find_module_by_name(modules, pulse.sender)
+        }
+
+        if m.op == OP_BROADCAST {
+            printf("%q\n", modules)
+            continue
+        }
+
+        if m.op == OP_FLIP_FLOP {
+            if m.flip_flop_state == STATE_HIGH {
+                m.flip_flop_state = STATE_LOW
+            
+                // Do not expect a pulse here since in this configuration it will send out a low pulse
+            } else {
+                m.flip_flop_state = STATE_HIGH
+            
+                // Expect a low pulse at this flip flop from anyone
+                array_push(pulses, new Pulse{
+                    "",
+                    STATE_LOW,
+                    m.name
+                })
+            }
+            
+            continue
+        }
+
+        if m.op == OP_CONJ {
+            keys := dict_str_int_keys(m.input_name_to_state)
+
+            for i := 0; i < array_str_len(keys); i += 1 {
+                key := array_str_get(keys, i)
+
+                if dict_str_int_get(m.input_name_to_state, key) == STATE_LOW {
+                    // Expect a high pulse from this sender
+                    array_push(pulses, new Pulse{
+                        key,
+                        STATE_HIGH,
+                        m.name 
+                    })
+
+                    dict_str_int_put(m.input_name_to_state, key, STATE_HIGH)
+                }
+            }
+
+            continue
+        }
+    }
+}
+
+init_input_states(modules)
+derive_low_pulse(modules)
 
 // init_conj_input_states(modules)
 // 
