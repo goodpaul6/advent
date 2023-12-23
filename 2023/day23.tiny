@@ -1,0 +1,325 @@
+input_contents := read_file("inputs/day23_ex.txt")
+
+struct Node {
+    row: int
+    col: int
+    ch: int
+    dist_to_start: int
+    visited: bool
+    neighbors: array
+}
+
+struct Graph {
+    w: int
+    h: int
+    nodes: array
+}
+
+func split_by_char(input: str, ch: int, max_split: int): array_str {
+    // Necessary because mutating arguments doesn't work haha
+    s := input
+    parts := array_str()
+
+    while true {
+        end_of_part_pos := strchr(s, ch)
+
+        if max_split > 0 && array_str_len(parts) == max_split - 1 {
+            end_of_part_pos = -1
+        }
+
+        part := substr(s, 0, end_of_part_pos)
+
+        array_str_push(parts, part)
+
+        if end_of_part_pos == -1 {
+            break
+        }
+        
+        s = substr(s, end_of_part_pos + 1, -1)
+    }
+
+    return parts
+}
+
+func get_node(graph: Graph, row: int, col: int): Node {
+    if row < 0 || col < 0 || row >= graph.h || col >= graph.w {
+        return null
+    }
+
+    return array_get(graph.nodes, col + row * graph.w)
+}
+
+func add_edge_if_valid(a: Node, b: Node) {
+    if b == null {
+        return;
+    }
+
+    //if b.ch == '<' && a.col < b.col {
+    //    return;
+    //}
+
+    //if b.ch == '>' && a.col > b.col {
+    //    return;
+    //}
+    
+    //if b.ch == '^' && a.row < b.row {
+    //    return;
+    //}
+
+    //if b.ch == 'v' && a.row > b.row {
+    //    return;
+    //}
+
+    array_push(a.neighbors, b)
+}
+
+func make_graph(lines: array_str): Graph {
+    len := array_str_len(lines)
+
+    graph := new Graph{
+        .nodes = array(),
+        .w = 0,
+        .h = 0
+    }
+
+    // Start by setting up the nodes where applicable
+    for row := 0; row < len; row += 1 {
+        graph.h += 1
+
+        line := array_str_get(lines, row)
+        cols := strlen(line)
+
+        graph.w = cols
+
+        for col := 0; col < cols; col += 1 {
+            ch := stridx(line, col)
+
+            if ch != '#' {
+                array_push(graph.nodes, new Node{
+                    .row = row,
+                    .col = col,
+                    .ch = ch,
+                    .dist_to_start = 0,
+                    .neighbors = array(),
+                    .visited = false
+                })
+            } else {
+                array_push(graph.nodes, null)
+            }
+        }
+    }
+
+    for row := 0; row < graph.h; row += 1 {
+        for col := 0; col < graph.w; col += 1 {
+            node: Node = array_get(graph.nodes, col + row * graph.w)
+
+            if node == null {
+                continue
+            }
+
+            left := get_node(graph, row, col - 1)
+            right := get_node(graph, row, col + 1)
+            top := get_node(graph, row - 1, col)
+            bottom := get_node(graph, row + 1, col)
+
+            if node.ch == '<' {
+                right = null
+                top = null
+                bottom = null
+            }
+
+            if node.ch == '>' {
+                left = null
+                top = null
+                bottom = null
+            }
+
+            if node.ch == '^' {
+                left = null
+                right = null
+                bottom = null
+            }
+
+            if node.ch == 'v' {
+                left = null
+                right = null
+                top = null
+            }
+
+            add_edge_if_valid(node, left)
+            add_edge_if_valid(node, right)
+            add_edge_if_valid(node, top)
+            add_edge_if_valid(node, bottom)
+        }
+    }
+
+    return graph
+}
+
+func array_has(arr: array, obj: any): bool {
+    len := array_len(arr)
+
+    for i := 0; i < len; i += 1 {
+        if array_get(arr, i) == obj {
+            return true
+        }
+    }
+    
+    return false
+}
+
+func fill_distances(graph: Graph) {
+    // Just build up the distance from each node to the start
+    // depth first
+    cands := array()
+
+    for i := 0; i < array_len(graph.nodes); i += 1 {
+        node := array_get(graph.nodes, i)
+
+        if node != null {
+            array_push(cands, node)
+        }
+    }
+
+    while array_len(cands) > 0 {
+        // Pop off max dist node
+        max_dist_idx := -1
+
+        len := array_len(cands)
+
+        for i := 0; i < len; i += 1 {
+            node: Node = array_get(cands, i)
+            
+            if max_dist_idx == -1 {
+                max_dist_idx = i
+                continue
+            }
+
+            prev_max_dist_node: Node = array_get(cands, max_dist_idx)
+
+            if prev_max_dist_node.dist_to_start < node.dist_to_start {
+                max_dist_idx = i
+            }
+        }
+
+        max_dist_node: Node = array_get(cands, max_dist_idx)
+        array_remove(cands, max_dist_idx)
+
+        len = array_len(max_dist_node.neighbors)
+
+        for i := 0; i < len; i += 1 {
+            n: Node = array_get(max_dist_node.neighbors, i)
+            
+            // If it's not in the candidate set then don't bother fixing up the distance
+            if !array_has(cands, n) {
+                continue
+            }
+
+            alt := max_dist_node.dist_to_start + 1
+            if alt > n.dist_to_start {
+                n.dist_to_start = alt
+            }
+        }
+    }
+}
+
+func print_dists(graph: Graph) {
+    for row := 0; row < graph.h; row += 1 {
+        if row + 1 < 10 {
+            printf("0%i: ", row + 1)
+        } else {
+            printf("%i: ", row + 1)
+        }
+
+        for col := 0; col < graph.w; col += 1 {
+            node: Node = array_get(graph.nodes, col + row * graph.w)
+
+            if node == null {
+                printf("__,")
+            } else {
+                if(node.dist_to_start < 10) {
+                    printf("0%i,", node.dist_to_start)
+                } else {
+                    printf("%i,", node.dist_to_start)
+                }
+            }
+        }
+        printf("\n")
+    }
+}
+
+func longest_path_length(graph: Graph): int {
+    // Now we should have the node distances filled out.
+    // Just start at the end and follow the neighbors
+    // with the highest (but lower) dist_to_start
+
+    start: Node = array_get(graph.nodes, 1)
+    end: Node = array_get(graph.nodes, (graph.w - 2) + (graph.h - 1) * graph.w)
+
+    dist := 0
+
+    cur := end
+
+    while cur != start {
+        next: Node = cast(null, Node)
+
+        len := array_len(cur.neighbors)
+
+        // printf("cur %c row=%i col=%i dist=%i len=%i\n", cur.ch, cur.row, cur.col, cur.dist_to_start, len)
+
+        if(cur.ch == '.') {
+            for i := 0; i < len; i += 1 {
+                n: Node = array_get(cur.neighbors, i)
+
+                // printf("n row=%i col=%i dist=%i\n", n.row, n.col, n.dist_to_start)
+
+                if n.dist_to_start <= cur.dist_to_start {
+                    if next == null || next.dist_to_start < n.dist_to_start {
+                        next = n
+                    }
+                }
+            }
+        } else {
+            // Just search for the highest adjacent node
+            left := get_node(graph, cur.row, cur.col - 1)
+            right := get_node(graph, cur.row, cur.col + 1)
+            top := get_node(graph, cur.row - 1, cur.col)
+            bottom := get_node(graph, cur.row + 1, cur.col)
+
+            if left != null && left.dist_to_start <= cur.dist_to_start {
+                if next == null || next.dist_to_start < left.dist_to_start {
+                    next = left
+                }
+            }
+
+            if right != null && right.dist_to_start <= cur.dist_to_start {
+                if next == null || next.dist_to_start < right.dist_to_start {
+                    next = right
+                }
+            }
+
+            if top != null && top.dist_to_start <= cur.dist_to_start {
+                if next == null || next.dist_to_start < top.dist_to_start {
+                    next = top
+                }
+            }
+
+            if bottom != null && bottom.dist_to_start <= cur.dist_to_start {
+                if next == null || next.dist_to_start < bottom.dist_to_start {
+                    next = bottom
+                }
+            }
+        }
+
+        cur = next
+        dist += 1
+    }
+
+    return dist
+}
+
+lines := split_by_char(input_contents, '\n', 0)
+graph := make_graph(lines)
+fill_distances(graph)
+print_dists(graph)
+printf("%i\n", longest_path_length(graph))
