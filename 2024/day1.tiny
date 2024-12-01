@@ -1,1 +1,107 @@
-printf("Hello, world!\n")
+use array("str") as astr
+use array("int") as aint
+
+data := read_file("inputs/day1.txt")
+
+func split_by_char(input: str, ch: int): astr {
+    // Necessary because mutating arguments doesn't work haha
+    s := input
+    parts := astr()
+
+    while true {
+        end_of_part_pos := strchr(s, ch)
+        part := substr(s, 0, end_of_part_pos)
+
+        astr_push(parts, part)
+
+        if end_of_part_pos == -1 {
+            break
+        }
+        
+        s = substr(s, end_of_part_pos + 1, -1)
+    }
+
+    return parts
+}
+
+// Returns dict of stringified ints to frequency of that integer
+func counters(nums: aint): dict {
+    freq := dict()
+
+    for i := 0; i < aint_len(nums); i += 1 {
+        num := aint_get(nums, i)
+        num_str := int_to_str(num)
+
+        prev_freq := dict_get(freq, num_str)
+
+        if prev_freq == null {
+            prev_freq = 0
+        }
+
+        // NOTE(Apaar): If "any" is supposed to be like "unknown" in TypeScript, why does this even work?
+        prev_freq += 1
+        
+        dict_put(freq, num_str, prev_freq)
+    }
+
+    return freq
+}
+
+func count_occurrances(num: int, sorted_nums: aint): int {
+    lo := 0
+    hi := aint_len(sorted_nums)
+
+    num_idx := -1
+
+    while lo < hi {
+        mid := (lo + hi) / 2
+
+        mid_num := aint_get(sorted_nums, mid)
+
+        if mid_num < num {
+            lo = mid
+            continue
+        } else if mid_num > num {
+            hi = mid
+            continue
+        } else {
+            num_idx = mid
+            break
+        }
+    }
+
+    left_idx := num_idx - 1
+    right_idx := num_idx + 1
+
+    printf("found num %q at %q = %q\n", num, num_idx, aint_get(sorted_nums, num_idx))
+}
+
+lines := split_by_char(data, '\n')
+left_numbers := aint()
+right_numbers := aint()
+
+for i := 0; i < astr_len(lines); i += 1 {
+    nums := split_by_char(astr_get(lines, i), ' ')  
+
+    aint_push(left_numbers, str_to_int(astr_get(nums, 0)))
+    aint_push(right_numbers, str_to_int(astr_get(nums, 1)))
+}
+
+aint_sort(left_numbers)
+aint_sort(right_numbers)
+
+dist_sum := 0
+
+for i = 0; i < aint_len(left_numbers); i += 1 {
+    dist := aint_get(left_numbers, i) - aint_get(right_numbers, i)
+
+    if dist < 0 {
+        dist *= -1
+    }
+
+    dist_sum += dist
+}
+
+printf("%i\n", dist_sum)
+
+count_occurrances(99467, right_numbers)
