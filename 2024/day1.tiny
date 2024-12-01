@@ -29,10 +29,10 @@ func counters(nums: aint): dict {
     freq := dict()
 
     for i := 0; i < aint_len(nums); i += 1 {
-        num := aint_get(nums, i)
+        num := nums[i]
         num_str := int_to_str(num)
 
-        prev_freq := dict_get(freq, num_str)
+        prev_freq := freq[num_str]
 
         if prev_freq == null {
             prev_freq = 0
@@ -41,8 +41,8 @@ func counters(nums: aint): dict {
         // NOTE(Apaar): If "any" is supposed to be like "unknown" in TypeScript, why does this even work?
         // It should yell at me that I shouldn't be able to increment an any
         prev_freq += 1
-        
-        dict_put(freq, num_str, prev_freq)
+
+        freq[num_str] = prev_freq    
     }
 
     return freq
@@ -65,7 +65,7 @@ aint_sort(right_numbers)
 dist_sum := 0
 
 for i = 0; i < aint_len(left_numbers); i += 1 {
-    dist := aint_get(left_numbers, i) - aint_get(right_numbers, i)
+    dist := left_numbers[i] - right_numbers[i]
 
     if dist < 0 {
         dist *= -1
@@ -79,10 +79,10 @@ right_counters := counters(right_numbers)
 score := 0
 
 for i = 0; i < aint_len(left_numbers); i += 1 {
-    num := aint_get(left_numbers, i)
+    num := left_numbers[i]
     num_str := int_to_str(num)
 
-    freq := dict_get(right_counters, num_str)
+    freq := right_counters[num_str]
 
     if freq == null {
         freq = 0
