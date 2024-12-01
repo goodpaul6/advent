@@ -88,7 +88,7 @@ for i = 0; i < aint_len(left_numbers); i += 1 {
         freq = 0
     }
 
-    score += num * freq
+    score += num * cast(freq, int)
 }
 
 printf("%q\n", score)
