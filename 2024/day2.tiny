@@ -1,0 +1,4 @@
+use array("str") as astr
+use array("int") as aint
+
+data := read_file("inputs/day2_example.txt")
