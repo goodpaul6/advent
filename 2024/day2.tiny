@@ -22,17 +22,27 @@ func split_by_char(input: str, ch: int): astr {
     return parts
 }
 
-data := read_file("inputs/day2_example.txt")
+data := read_file("inputs/day2.txt")
 
 lines := split_by_char(data, '\n')
 
 safe_count := 0
 
-func is_safe(nums: aint): bool {
+func is_safe(nums: aint, skip_index: int): bool {
     sign := 0
-    prev_value := nums[0]
+    start_index := 0
+    
+    if skip_index == 0 {
+        start_index = 1
+    }
 
-    for j := 1; j < aint_len(nums); j += 1 {
+    prev_value := nums[start_index]
+
+    for j := start_index + 1; j < aint_len(nums); j += 1 {
+        if j == skip_index {
+            continue    
+        } 
+        
         value := nums[j]
 
         if sign == 0 {
@@ -66,6 +76,20 @@ func is_safe(nums: aint): bool {
     return true
 }
 
+func is_safe_with_at_most_one_removed(nums: aint): bool {
+    if is_safe(nums, -1) {
+        return true
+    }
+
+    for i := 0; i < aint_len(nums); i += 1 {
+        if is_safe(nums, i) {
+            return true
+        } 
+    }
+
+    return false
+}
+
 for i := 0; i < astr_len(lines); i += 1 {
     line := lines[i]
 
@@ -82,7 +106,7 @@ for i := 0; i < astr_len(lines); i += 1 {
         nums[j] = str_to_int(num_strs[j])
     }
 
-    if is_safe(nums) {
+    if is_safe_with_at_most_one_removed(nums) {
         safe_count += 1
     } 
 }
