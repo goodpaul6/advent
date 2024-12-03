@@ -1,0 +1,52 @@
+use array("str") as astr
+use array("int") as aint
+
+func split_by_char(input: str, ch: int): astr {
+    // Necessary because mutating arguments doesn't work haha
+    s := input
+    parts := astr()
+
+    while true {
+        end_of_part_pos := strchr(s, ch)
+        part := substr(s, 0, end_of_part_pos)
+
+        astr_push(parts, part)
+
+        if end_of_part_pos == -1 {
+            break
+        }
+        
+        s = substr(s, end_of_part_pos + 1, -1)
+    }
+
+    return parts
+}
+
+func is_digit(ch: int): bool {
+    return ch >= '0' && ch <= '9'
+}
+
+func is_digit_str(s: str): bool {
+    for i := 0; i < s->strlen(); i += 1 {
+        if !is_digit(s[i]) return false
+    }
+
+    return true
+}
+
+use result("aint") as r_aint
+
+func strs_to_ints(a: astr): r_aint {
+    b := aint()
+    aint_resize(b, a->astr_len())
+
+    for i := 0; i < a->astr_len(); i += 1 {
+        if !is_digit_str(a[i]) {
+            return r_aint_err("string is not a valid integer")
+        }
+
+        b[i] = str_to_int(a[i])
+    }
+
+    return r_aint_ok(b)
+}

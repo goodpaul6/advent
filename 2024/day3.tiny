@@ -1,40 +1,6 @@
-use array("str") as astr
-use array("int") as aint
-
-func split_by_char(input: str, ch: int): astr {
-    // Necessary because mutating arguments doesn't work haha
-    s := input
-    parts := astr()
-
-    while true {
-        end_of_part_pos := strchr(s, ch)
-        part := substr(s, 0, end_of_part_pos)
-
-        astr_push(parts, part)
-
-        if end_of_part_pos == -1 {
-            break
-        }
-        
-        s = substr(s, end_of_part_pos + 1, -1)
-    }
-
-    return parts
-}
+use import("util.tiny")
 
 data := read_file("inputs/day3.txt")
-
-func is_digit(ch: int): bool {
-    return ch >= '0' && ch <= '9'
-}
-
-func is_digit_str(s: str): bool {
-    for i := 0; i < s->strlen(); i += 1 {
-        if !is_digit(s[i]) return false
-    }
-
-    return true
-}
 
 func scan_for_muls(inp: str): int {
     sum := 0
@@ -79,8 +45,6 @@ func scan_for_muls(inp: str): int {
         if parts->astr_len() != 2 {
             continue
         }
-
-        printf("parts=%q\n", parts)
 
         mul_result := 1
         valid := true
