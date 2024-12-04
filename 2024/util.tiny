@@ -36,6 +36,15 @@ func is_digit_str(s: str): bool {
 
 use result("aint") as r_aint
 
+// Unwraps and indexes into r_aint
+func r_aint_get_index(r: r_aint, idx: int): int {
+    return r_aint_unwrap(r)[idx]
+}
+
+func r_aint_len(r: r_aint): int {
+    return r_aint_unwrap(r)->aint_len()
+}
+
 func strs_to_ints(a: astr): r_aint {
     b := aint()
     aint_resize(b, a->astr_len())
