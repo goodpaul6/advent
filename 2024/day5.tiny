@@ -1,0 +1,84 @@
+use import("util.tiny")
+
+// Remember which pages come after which ones
+
+// Scan through the array and remember which ones have been
+// seen so far.
+//
+// Look up the rules for the current number, and if we've already
+// _seen_ one of the numbers in the rules, then it's not correctly
+// ordered (we already saw a number that's supposed to be after the
+// current one).
+
+data := read_file("inputs/day5.txt")
+
+lines := split_by_char(data, '\n')
+
+num_to_before_nums := dict()
+
+mid_sum := 0
+
+for i := 0; i < lines->astr_len(); i += 1 {
+    line := lines[i]
+    
+    is_rule_line := strchr(line, '|') != -1
+    is_sequence_line := strchr(line, ',') != -1
+
+    if is_rule_line {
+        rule_parts := split_by_char(line, '|')
+
+        num := str_to_int(rule_parts[0])
+        before_num := str_to_int(rule_parts[1])
+
+        before_nums := cast(num_to_before_nums[num], aint)
+
+        if before_nums == null {
+            before_nums = aint()
+        }
+
+        before_nums->aint_push(before_num)
+
+        num_to_before_nums[num] = before_nums
+    } else if is_sequence_line {
+        seen_nums := dict()
+
+        line_nums := split_by_char(line, ',')
+                        ->strs_to_ints()
+                        ->r_aint_unwrap()
+
+        valid := true
+
+        for j := 0; j < line_nums->aint_len(); j += 1 {
+            num = line_nums[j]
+            seen_nums[num] = true
+
+            before_nums = cast(num_to_before_nums[num], aint)
+
+            if before_nums == null {
+                continue
+            }
+
+            // If we've seen any of the before nums, this is invalid
+            for k := 0; k < before_nums->aint_len(); k += 1 {
+                before_num = before_nums[k]
+                
+                if seen_nums->dict_exists(before_num) {
+                    valid = false
+                    break
+                }
+            }
+
+            if !valid {
+                break
+            }
+        }
+
+        if !valid {
+            continue
+        }
+
+        mid_sum += line_nums[line_nums->aint_len() / 2]
+    }
+}
+
+printf("mid_sum=%q\n", mid_sum)
