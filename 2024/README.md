@@ -1,6 +1,6 @@
 # Advent of Tiny
 
-This year, I've decided to solve every day of AoC2024 in [Tiny](https://github.com/goodpaul6/Tiny).
+This year, I've decided to solve every day of AoC2024 in my own programming language – [Tiny](https://github.com/goodpaul6/Tiny).
 
 <p align="center">
   <img src="https://github.com/user-attachments/assets/2a770084-6a88-461f-b5e0-0e00405bd5b3" width="600" />
