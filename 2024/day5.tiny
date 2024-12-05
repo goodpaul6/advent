@@ -10,7 +10,7 @@ use import("util.tiny")
 // ordered (we already saw a number that's supposed to be after the
 // current one).
 
-data := read_file("inputs/day5.txt")
+data := read_file("inputs/day5_example.txt")
 
 lines := split_by_char(data, '\n')
 
@@ -40,17 +40,15 @@ for i := 0; i < lines->astr_len(); i += 1 {
 
         num_to_before_nums[num] = before_nums
     } else if is_sequence_line {
-        seen_nums := dict()
+        seen_pos := dict()
 
         line_nums := split_by_char(line, ',')
                         ->strs_to_ints()
                         ->r_aint_unwrap()
 
-        valid := true
-
         for j := 0; j < line_nums->aint_len(); j += 1 {
             num = line_nums[j]
-            seen_nums[num] = true
+            seen_pos[num] = j
 
             before_nums = cast(num_to_before_nums[num], aint)
 
@@ -58,23 +56,21 @@ for i := 0; i < lines->astr_len(); i += 1 {
                 continue
             }
 
-            // If we've seen any of the before nums, this is invalid
             for k := 0; k < before_nums->aint_len(); k += 1 {
                 before_num = before_nums[k]
                 
-                if seen_nums->dict_exists(before_num) {
-                    valid = false
-                    break
+                before_num_pos := seen_pos[before_num]
+                
+                // This number is supposed to be after us but it's currently before us.
+                // Move it in front of us
+                if before_num_pos < j {
+                    line_nums[j] = before_num
+                    // Push us before the `before_num`
+                    line_nums->aint_insert(j, num)
+                    // Now that we've moved back a spot, update j accordingly
+                    j -= 1
                 }
             }
-
-            if !valid {
-                break
-            }
-        }
-
-        if !valid {
-            continue
         }
 
         mid_sum += line_nums[line_nums->aint_len() / 2]
