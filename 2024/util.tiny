@@ -59,3 +59,13 @@ func strs_to_ints(a: astr): r_aint {
 
     return r_aint_ok(b)
 }
+
+func aint_has(a: aint, v: int): bool {
+    for i := 0; i < a->aint_len(); i += 1 {
+        if a[i] == v {
+            return true
+        }
+    }
+
+    return false
+}

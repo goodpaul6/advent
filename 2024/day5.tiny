@@ -10,7 +10,7 @@ use import("util.tiny")
 // ordered (we already saw a number that's supposed to be after the
 // current one).
 
-data := read_file("inputs/day5_example.txt")
+data := read_file("inputs/day5.txt")
 
 lines := split_by_char(data, '\n')
 
@@ -40,8 +40,6 @@ for i := 0; i < lines->astr_len(); i += 1 {
 
         num_to_before_nums[num] = before_nums
     } else if is_sequence_line {
-        seen_pos := dict()
-
         line_nums := split_by_char(line, ',')
                         ->strs_to_ints()
                         ->r_aint_unwrap()
@@ -50,47 +48,32 @@ for i := 0; i < lines->astr_len(); i += 1 {
 
         for j := 0; j < line_nums->aint_len(); j += 1 {
             num = line_nums[j]
-            seen_pos[num] = j
 
-            before_nums = cast(num_to_before_nums[num], aint)
+            nums_after_num := cast(num_to_before_nums[num], aint)
 
-            if before_nums == null {
+            if nums_after_num == null {
+                // This can go wherever
                 continue
             }
-
+            
             invalidated := false
-
-            for k := 0; k < before_nums->aint_len(); k += 1 {
-                before_num = before_nums[k]
-                
-                before_num_pos := cast(seen_pos[before_num], int)
-                
-                // This number is supposed to be after us but it's currently before us.
-                // Move it in front of us
-                if before_num_pos != null && before_num_pos < j {
-                    valid = false
+            
+            // Scan backward. Are there any nums that should go after this num?
+            for k := j - 1; k >= 0; k -= 1 {
+                if nums_after_num->aint_has(line_nums[k]) {
+                    // Swap them around
+                    line_nums[j] = line_nums[k]
+                    line_nums[k] = num
+                    
                     invalidated = true
-
-                    line_nums[j] = before_num
-
-                    line_nums->aint_remove(before_num_pos)
-
-                    // HACK(Apaar): Why does this need to be - 1? Inserting at 1 should push everything in front of us forward right??
-                    // I guess it's correct.
-
-                    // Push us before the `before_num`
-                    line_nums->aint_insert(j - 1, num)
-
-                    // Now that number is here
-                    seen_pos[before_num] = j
+                    valid = false
                     break
                 }
             }
-            
+
             if invalidated {
-                // Start over, effectively bubble sort
+                // Restart
                 j = 0
-                seen_pos->dict_clear()
             }
         }
 
@@ -101,4 +84,5 @@ for i := 0; i < lines->astr_len(); i += 1 {
     }
 }
 
+// printf("keys=%q\nvalues=%q\n", num_to_before_nums->dict_keys(), num_to_before_nums->dict_values())
 printf("mid_sum=%q\n", mid_sum)
