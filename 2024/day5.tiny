@@ -46,6 +46,8 @@ for i := 0; i < lines->astr_len(); i += 1 {
                         ->strs_to_ints()
                         ->r_aint_unwrap()
 
+        valid := true
+
         for j := 0; j < line_nums->aint_len(); j += 1 {
             num = line_nums[j]
             seen_pos[num] = j
@@ -56,24 +58,46 @@ for i := 0; i < lines->astr_len(); i += 1 {
                 continue
             }
 
+            invalidated := false
+
             for k := 0; k < before_nums->aint_len(); k += 1 {
                 before_num = before_nums[k]
                 
-                before_num_pos := seen_pos[before_num]
+                before_num_pos := cast(seen_pos[before_num], int)
                 
                 // This number is supposed to be after us but it's currently before us.
                 // Move it in front of us
-                if before_num_pos < j {
+                if before_num_pos != null && before_num_pos < j {
+                    valid = false
+                    invalidated = true
+
                     line_nums[j] = before_num
+
+                    line_nums->aint_remove(before_num_pos)
+
+                    // HACK(Apaar): Why does this need to be - 1? Inserting at 1 should push everything in front of us forward right??
+                    // I guess it's correct.
+
                     // Push us before the `before_num`
-                    line_nums->aint_insert(j, num)
-                    // Now that we've moved back a spot, update j accordingly
-                    j -= 1
+                    line_nums->aint_insert(j - 1, num)
+
+                    // Now that number is here
+                    seen_pos[before_num] = j
+                    break
                 }
+            }
+            
+            if invalidated {
+                // Start over, effectively bubble sort
+                j = 0
+                seen_pos->dict_clear()
             }
         }
 
-        mid_sum += line_nums[line_nums->aint_len() / 2]
+        if !valid {
+            printf("%q\n", line_nums)
+            mid_sum += line_nums[line_nums->aint_len() / 2]
+        }
     }
 }
 
