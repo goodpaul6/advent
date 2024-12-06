@@ -20,4 +20,5 @@ g := new Guard{
 }
 
 debug_break()
+g.pos = new V2{10, 20}
 g.pos.x = 10

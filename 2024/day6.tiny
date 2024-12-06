@@ -63,16 +63,15 @@ func move_guard_till_exit(g: Guard, rows: astr, stepped: abool, w: int, h: int) 
 
         stepped[nx + ny * w] = true
 
-        debug_break()
-
         g.pos.x = nx
         g.pos.y = ny
     }
 }
 
-data := read_file("inputs/day6_example.txt")
+data := read_file("inputs/day6.txt")
 
 rows := split_by_char(data, '\n')
+rows->astr_pop()
 
 h := rows->astr_len()
 w := rows[0]->strlen()
@@ -80,14 +79,16 @@ w := rows[0]->strlen()
 g := find_guard(rows, w, h)
 
 stepped := abool()
-abool_resize_fill(stepped, w * h, true)
+abool_resize_fill(stepped, w * h, false)
 
 move_guard_till_exit(g, rows, stepped, w, h)
 
 step_count := 0
 
 for i := 0; i < stepped->abool_len(); i += 1 {
-    step_count += 1
+    if stepped[i] {
+        step_count += 1
+    }
 }
 
 printf("%q\n", step_count)
