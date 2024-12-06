@@ -1,0 +1,23 @@
+struct V2 {
+    x: int
+    y: int
+}
+
+UP          :: 0
+RIGHT       :: 1
+DOWN        :: 2
+LEFT        :: 3
+DIR_COUNT   :: 4
+
+struct Guard {
+    dir: int
+    pos: V2
+}
+
+g := new Guard{
+    .dir = UP,
+    .pos = new V2{1, 1},
+}
+
+debug_break()
+g.pos.x = 10

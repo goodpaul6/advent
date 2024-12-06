@@ -1,0 +1,93 @@
+use import("util.tiny")
+
+use array("bool") as abool
+
+struct V2 {
+    x: int
+    y: int
+}
+
+UP          :: 0
+RIGHT       :: 1
+DOWN        :: 2
+LEFT        :: 3
+DIR_COUNT   :: 4
+
+struct Guard {
+    dir: int
+    pos: V2
+}
+
+func dir_to_delta(dir: int): V2 {
+    return if dir == LEFT new V2{-1, 0}
+           else if dir == RIGHT new V2{1, 0}
+           else if dir == UP new V2{0, -1}
+           else new V2{0, 1}
+}
+
+func find_guard(rows: astr, w: int, h: int): Guard {
+    for y := 0; y < h; y += 1 {
+        for x := 0; x < w; x += 1 {
+            if rows[y][x] == '^' {
+                return new Guard{
+                    .dir = UP,
+                    .pos = new V2{x, y}
+                }
+            }
+        }
+    }
+
+    printf("no guard\n")
+    exit(1)
+}
+
+func move_guard_till_exit(g: Guard, rows: astr, stepped: abool, w: int, h: int) {
+    stepped[g.pos.x + g.pos.y * w] = true
+
+    while true {
+        d := dir_to_delta(g.dir) 
+
+        nx := g.pos.x + d.x
+        ny := g.pos.y + d.y
+
+        if ny < 0 || ny >= h ||
+           nx < 0 || nx >= w {
+            break
+        }
+
+        if rows[ny][nx] == '#' {
+            g.dir += 1
+            g.dir %= DIR_COUNT
+            continue
+        }
+
+        stepped[nx + ny * w] = true
+
+        debug_break()
+
+        g.pos.x = nx
+        g.pos.y = ny
+    }
+}
+
+data := read_file("inputs/day6_example.txt")
+
+rows := split_by_char(data, '\n')
+
+h := rows->astr_len()
+w := rows[0]->strlen()
+
+g := find_guard(rows, w, h)
+
+stepped := abool()
+abool_resize_fill(stepped, w * h, true)
+
+move_guard_till_exit(g, rows, stepped, w, h)
+
+step_count := 0
+
+for i := 0; i < stepped->abool_len(); i += 1 {
+    step_count += 1
+}
+
+printf("%q\n", step_count)
