@@ -1,0 +1,131 @@
+use import("util.tiny")
+
+use array("bool") as abool
+
+struct V2 {
+    x: int
+    y: int
+}
+
+UP          :: 0
+RIGHT       :: 1
+DOWN        :: 2
+LEFT        :: 3
+DIR_COUNT   :: 4
+
+struct Guard {
+    dir: int
+    pos: V2
+}
+
+func dir_to_delta(dir: int): V2 {
+    return if dir == LEFT new V2{-1, 0}
+           else if dir == RIGHT new V2{1, 0}
+           else if dir == UP new V2{0, -1}
+           else new V2{0, 1}
+}
+
+func find_guard(rows: astr, w: int, h: int): Guard {
+    for y := 0; y < h; y += 1 {
+        for x := 0; x < w; x += 1 {
+            if rows[y][x] == '^' {
+                return new Guard{
+                    .dir = UP,
+                    .pos = new V2{x, y}
+                }
+            }
+        }
+    }
+
+    printf("no guard\n")
+    exit(1)
+}
+
+// If the guard ever steps on the same position with the same direction it's had before, it will loop
+func pos_dir_id(g: Guard): int {
+    return (g.pos.x << 16) | (g.pos.y << 8) | g.dir
+}
+
+func will_loop(g: Guard, rows: aint, w: int, h: int): bool {
+    seen_pos_dirs := dict()
+
+    while true {
+        if seen_pos_dirs[pos_dir_id(g)] == true {
+            return true
+        }
+
+        seen_pos_dirs[pos_dir_id(g)] = true
+
+        d := dir_to_delta(g.dir) 
+
+        nx := g.pos.x + d.x
+        ny := g.pos.y + d.y
+
+        if ny < 0 || ny >= h ||
+           nx < 0 || nx >= w {
+            break
+        }
+
+        if rows[nx + ny * w] == '#' {
+            g.dir += 1
+            g.dir %= DIR_COUNT
+            continue
+        }
+
+        g.pos.x = nx
+        g.pos.y = ny
+    }
+
+    return false
+}
+
+func loop_obs_count(g: Guard, rows: aint, w: int, h: int): int {
+    loop_count := 0
+
+    init_x := g.pos.x
+    init_y := g.pos.y
+
+    for y := 0; y < h; y += 1 {
+        for x := 0; x < w; x += 1 {
+            if rows[x + y * w] != '.' {
+                continue
+            }
+
+            // Try obstructing this one
+            rows[x + y * w] = '#'
+            g.pos.x = init_x
+            g.pos.y = init_y
+            g.dir = UP
+
+            if will_loop(g, rows, w, h) {
+                loop_count += 1
+            }
+
+            rows[x + y * w] = '.'
+            printf("%q %q done\n", x, y)
+        }
+    }
+
+    return loop_count
+}
+
+data := read_file("inputs/day6.txt")
+
+rows_str := split_by_char(data, '\n')
+rows_str->astr_pop()
+
+h := rows_str->astr_len()
+w := rows_str[0]->strlen()
+
+g := find_guard(rows_str, w, h)
+
+rows := aint()
+aint_resize(rows, w * h)
+
+for y := 0; y < h; y += 1 {
+    for x := 0; x < w; x += 1 {
+        rows[x + y * w] = rows_str[y][x]
+    }
+}
+
+printf("%q\n", loop_obs_count(g, rows, w, h))
