@@ -42,19 +42,21 @@ func find_guard(rows: astr, w: int, h: int): Guard {
 }
 
 // If the guard ever steps on the same position with the same direction it's had before, it will loop
-func pos_dir_id(g: Guard): int {
-    return (g.pos.x << 16) | (g.pos.y << 8) | g.dir
+func pos_dir_id(g: Guard, w: int, h: int): int {
+    return g.pos.x + g.pos.y * w + g.dir * w * h
 }
 
 func will_loop(g: Guard, rows: aint, w: int, h: int): bool {
-    seen_pos_dirs := dict()
+    // Tiny skips doing GC passes over the elements of primitive arrays
+    seen_pos_dirs := abool()
+    abool_resize_fill(seen_pos_dirs, w * h * DIR_COUNT, false)
 
     while true {
-        if seen_pos_dirs[pos_dir_id(g)] == true {
+        if seen_pos_dirs[pos_dir_id(g, w, h)] == true {
             return true
         }
 
-        seen_pos_dirs[pos_dir_id(g)] = true
+        seen_pos_dirs[pos_dir_id(g, w, h)] = true
 
         d := dir_to_delta(g.dir) 
 

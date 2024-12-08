@@ -1,0 +1,105 @@
+use import("util.tiny")
+
+use array("bool") as abool
+
+struct V2 {
+    x: int
+    y: int
+}
+
+struct Antenna {
+    ch: int
+    pos: V2
+}
+
+use array("Antenna") as aant
+
+func v2_add(a: V2, b: V2): V2 {
+    return new V2{a.x + b.x, a.y + b.y}
+}
+
+func v2_sub(a: V2, b: V2): V2 {
+    return new V2{a.x - b.x, a.y - b.y}
+}
+
+func find_antenna(rows: astr, w: int, h: int): dict {
+    ch_to_ants := dict()
+
+    for y := 0; y < h; y += 1 {
+        for x := 0; x < w; x += 1 {
+            ch := rows[y][x]
+
+            if ch == '.' {
+                continue
+            }
+
+            ants := cast(ch_to_ants[ch], aant)
+
+            if ants == null {
+                ants = aant()
+            }
+
+            ants->aant_push(new Antenna{
+                .ch = ch,
+                .pos = new V2{x, y}
+            })
+
+            ch_to_ants[ch] = ants
+        }
+    }
+
+    return ch_to_ants
+}
+
+func plot_antinodes(ants: aant, grid: abool, w: int, h: int) {
+    for i := 0; i < ants->aant_len(); i += 1 {
+        for j := i + 1; j < ants->aant_len(); j += 1 {
+            a := ants[i]
+            b := ants[j]
+
+            diff := v2_sub(b.pos, a.pos)
+
+            a_pos := v2_sub(a.pos, diff)
+            b_pos := v2_add(b.pos, diff)
+
+            if a_pos.x >= 0 && a_pos.x < w &&
+               a_pos.y >= 0 && a_pos.y < h {
+                grid[a_pos.x + a_pos.y * w] = true
+            }
+
+            if b_pos.x >= 0 && b_pos.x < w &&
+               b_pos.y >= 0 && b_pos.y < h {
+                grid[b_pos.x + b_pos.y * w] = true
+            }
+        }
+    }
+}
+
+data := read_file("inputs/day8.txt")
+
+rows := split_by_char(data, '\n')
+rows->astr_pop()
+
+w := rows[0]->strlen()
+h := rows->astr_len()
+
+ch_to_ants := find_antenna(rows, w, h)
+
+chs := cast(cast(ch_to_ants->dict_keys(), any), aint)
+
+grid := abool()
+abool_resize_fill(grid, w * h, false)
+
+for i := 0; i < chs->aint_len(); i += 1 {
+    ch := chs[i]
+
+    plot_antinodes(cast(ch_to_ants[ch], aant), grid, w, h)
+}
+
+count := 0
+
+for i = 0; i < grid->abool_len(); i += 1 {
+    count += if grid[i] 1 else 0 
+}
+
+printf("%q\n", count)
