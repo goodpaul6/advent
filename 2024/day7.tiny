@@ -1,0 +1,30 @@
+use import("util.tiny")
+
+data := read_file("inputs/day7_example.txt")
+lines := split_by_char(data, '\n')
+lines->astr_pop()
+
+struct Line {
+    test: int
+    values: aint
+}
+
+use array("Line") as aline
+
+func is_possible(values: aint, idx: int, value_so_far: int, target: int): bool {
+    if idx == values->aint_len() {
+        return value_so_far == target
+    }
+
+    lhs := value_so_far
+    rhs := values[idx]
+
+    add_branch := is_possible(values, idx + 1, lhs + rhs, target)
+    mul_branch := is_possible(values, idx + 1, (if lhs == 0 1 else lhs) * rhs, target)
+
+    return add_branch || mul_branch
+}
+
+printf("%q\n", is_possible(aint(11, 6, 16, 20), 1, 292))
+
+
