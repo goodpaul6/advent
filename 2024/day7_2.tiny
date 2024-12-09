@@ -1,0 +1,57 @@
+use import("util.tiny")
+
+func concat(a: int, b: int): int {
+    b_v := b
+
+    while b_v > 0 {
+        b_v /= 10
+        a *= 10
+    }
+
+    return a + b
+}
+
+func is_possible(values: aint, idx: int, value_so_far: int, target: int): bool {
+    if idx < 1 {
+        printf("must pass at least 1 for idx\n")
+        exit(1)
+    }
+
+    if idx == values->aint_len() {
+        return value_so_far == target
+    }
+
+    lhs := value_so_far
+    rhs := values[idx]
+
+    return is_possible(values, idx + 1, lhs + rhs, target) ||
+           is_possible(values, idx + 1, lhs * rhs, target) ||
+           is_possible(values, idx + 1, concat(lhs, rhs), target)
+}
+
+data := read_file("inputs/day7.txt")
+lines := split_by_char(data, '\n')
+lines->astr_pop()
+
+target_sum := 0
+
+for i := 0; i < lines->astr_len(); i += 1 {
+    line := lines[i]
+    
+    parts := split_by_char(line, ':')
+
+    target := str_to_int(parts[0])
+
+    rest := split_by_char(parts[1], ' ')
+    rest->astr_shift()
+    
+    values := strs_to_ints(rest)->r_aint_unwrap()
+    
+    if is_possible(values, 1, values[0], target) {
+        target_sum += target
+    }
+}
+
+printf("%q\n", target_sum)
+
+
