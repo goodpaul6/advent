@@ -1,0 +1,96 @@
+use import("util.tiny")
+
+data := read_file("inputs/day9.txt")
+
+inp := split_by_char(data, '\n')[0]
+
+cur_id := 0
+
+blocks := aint()
+
+struct Item {
+    pos: int
+    // -1 means space
+    id: int
+    len: int
+}
+
+use array("Item") as aitem
+
+files := aitem()
+spaces := aitem()
+
+for i := 0; i < inp->strlen(); i += 1 {
+    val := inp[i] - '0'
+
+    if i % 2 == 0 {
+        files->aitem_push(new Item{
+            .pos = blocks->aint_len(),
+            .id = cur_id,
+            .len = val,
+        })
+
+        for j := 0; j < val; j += 1 {
+            blocks->aint_push(cur_id)
+        }
+
+        cur_id += 1
+    } else {
+        spaces->aitem_push(new Item{
+            .pos = blocks->aint_len(),
+            .id = -1,
+            .len = val,
+        })
+
+        for j = 0; j < val; j += 1 {
+            blocks->aint_push(-1)
+        }
+    }
+}
+
+// printf("blocks=%q\n", blocks)
+// printf("files=%q\n", files)
+// printf("spaces=%q\n", spaces)
+
+for i = files->aitem_len() - 1; i >= 1; i -= 1 {
+    // printf("%q\n", blocks)
+
+    // Look for first fit in spaces
+    file := files[i]
+
+    for j = 0; j < spaces->aitem_len(); j += 1 {
+        space := spaces[j]
+
+        if file.len > space.len || space.pos >= file.pos {
+            continue
+        }
+
+        // Fill the space with the file
+        for k := 0; k < file.len; k += 1 {
+            blocks[space.pos + k] = file.id
+            blocks[file.pos + k] = -1
+        }
+
+        // NOTE(Apaar): I just assume this will be fast enough even if we
+        // don't remove empty spaces
+        space.len -= file.len
+        space.pos += file.len
+
+        break
+    }
+}
+
+// printf("%q\n", blocks)
+
+csum := 0
+
+for i = 0; i < blocks->aint_len(); i += 1 {
+    if blocks[i] < 0 {
+        continue
+    }
+
+    csum += blocks[i] * i
+}
+
+printf("csum=%q\n", csum)
+
