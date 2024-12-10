@@ -1,0 +1,56 @@
+use import("util.tiny")
+use array("bool") as abool
+
+data := read_file("inputs/day10.txt")
+
+lines := split_by_char(data, '\n')
+lines->astr_pop()
+
+h := lines->astr_len()
+w := lines[0]->strlen()
+
+func reachable_nines(rows: astr, w: int, h: int, x: int, y: int, cur_h: int, reached: abool): int {
+    if x < 0 || x >= w {
+        return 0
+    }
+
+    if y < 0 || y >= h {
+        return 0
+    }
+
+    th := rows[y][x] - '0'
+
+    // Can't step up
+    if th != cur_h {
+        return 0
+    }
+
+    if th == 9 {
+        res := if !reached[x + y * w] 1 else 0
+        // reached[x + y * w] = true
+
+        return res
+    }
+
+    return reachable_nines(rows, w, h, x - 1, y, cur_h + 1, reached) +
+           reachable_nines(rows, w, h, x, y - 1, cur_h + 1, reached) +
+           reachable_nines(rows, w, h, x + 1, y, cur_h + 1, reached) +
+           reachable_nines(rows, w, h, x, y + 1, cur_h + 1, reached)
+}
+
+score := 0
+
+for y := 0; y < h; y += 1 {
+    for x := 0; x < w; x += 1 {
+        if lines[y][x] != '0' {
+            continue
+        }
+
+        reached := abool()
+        reached->abool_resize_fill(w * h, false)
+
+        score += reachable_nines(lines, w, h, x, y, 0, reached)
+    }
+}
+
+printf("%q\n", score)
