@@ -1,6 +1,7 @@
 use import("util.tiny")
+use array("bool") as abool
 
-data := read_file("inputs/day10_example.txt")
+data := read_file("inputs/day10.txt")
 
 lines := split_by_char(data, '\n')
 lines->astr_pop()
@@ -8,45 +9,47 @@ lines->astr_pop()
 h := lines->astr_len()
 w := lines[0]->strlen()
 
-func reachable_nines(rows: astr, w: int, h: int, x: int, y: int, cur_h: int): int {
-    printf("cur_h=%q at %q, %q\n", cur_h, x, y)
-
+func reachable_nines(rows: astr, w: int, h: int, x: int, y: int, cur_h: int, reached: abool): int {
     if x < 0 || x >= w {
-        printf("%q, %q, xob\n", x, y)
         return 0
     }
 
     if y < 0 || y >= h {
-        printf("%q, %q, yob\n", x, y)
         return 0
     }
 
-    h := rows[y][x] - '0'
-
-    printf("at cur_h=%q, %q,%q=%q\n", cur_h, x, y, h)
+    th := rows[y][x] - '0'
 
     // Can't step up
-    if h != cur_h {
+    if th != cur_h {
         return 0
     }
 
-    printf("step cur_h=%q, %q,%q=%q\n", cur_h, x, y, h)
+    if th == 9 {
+        res := if !reached[x + y * w] 1 else 0
+        reached[x + y * w] = true
 
-    if h == 9 {
-        return 1
+        return res
     }
 
-    return reachable_nines(rows, w, h, x - 1, y, cur_h + 1) +
-           reachable_nines(rows, w, h, x, y - 1, cur_h + 1) +
-           reachable_nines(rows, w, h, x + 1, y, cur_h + 1) +
-           reachable_nines(rows, w, h, x, y + 1, cur_h + 1)
+    return reachable_nines(rows, w, h, x - 1, y, cur_h + 1, reached) +
+           reachable_nines(rows, w, h, x, y - 1, cur_h + 1, reached) +
+           reachable_nines(rows, w, h, x + 1, y, cur_h + 1, reached) +
+           reachable_nines(rows, w, h, x, y + 1, cur_h + 1, reached)
 }
 
 score := 0
 
 for y := 0; y < h; y += 1 {
     for x := 0; x < w; x += 1 {
-        score += reachable_nines(lines, w, h, x, y, 0)
+        if lines[y][x] != '0' {
+            continue
+        }
+
+        reached := abool()
+        reached->abool_resize_fill(w * h, false)
+
+        score += reachable_nines(lines, w, h, x, y, 0, reached)
     }
 }
 
