@@ -1,0 +1,100 @@
+use import("util.tiny")
+
+data := read_file("inputs/day11_test.txt")
+
+parts := split_by_char(split_by_char(data, '\n')[0], ' ')
+nums := strs_to_ints(parts)->r_aint_unwrap()
+
+func num_digits(v: int): int {
+    digits := 0
+
+    while v > 0 {
+        v /= 10
+        digits += 1
+    }
+
+    return digits
+}
+
+// We can pre-compute how many stones a given number turns into after 75 blinks and store that in a dictionary so we don't re-insert
+// the same numbers? Just their counts?
+
+// Maybe after 25 blinks just collapse the numbers? Like remember how many numbers each number turns into?
+
+id_to_count := dict()
+
+func num_blink_id(num: int, blinks: int): int {
+    return (num << 8) | blinks
+    // return strcat(int_to_str(num), int_to_str(blinks))
+}
+
+func num_to_count_after_blinks(num: int, blinks_so_far: int): int {
+    if blinks_so_far == 25 {
+        // Stop at this many blinks
+        return 1
+    }
+
+    id := num_blink_id(num, blinks_so_far)
+
+    prev := cast(id_to_count[id], int)
+
+    if prev != null {
+        return prev
+    }
+
+    value := 0
+
+    if num == 0 {
+        value = num_to_count_after_blinks(1, blinks_so_far + 1)
+    } else if num_digits(num) % 2 == 0 {
+        num_s := int_to_str(num)
+
+        len := num_s->strlen()
+        half_len := len / 2
+
+        left := substr(num_s, 0, half_len)->str_to_int()
+        right := substr(num_s, half_len, len)->str_to_int()
+
+        value = num_to_count_after_blinks(left, blinks_so_far + 1) +
+               num_to_count_after_blinks(right, blinks_so_far + 1)
+    } else {
+        value = num_to_count_after_blinks(num * 2024, blinks_so_far + 1)
+    }
+
+    id_to_count->dict_put(id, value)
+
+    return value
+}
+
+func blink(nums: aint): aint {
+    new_nums := aint()
+
+    for i := 0; i < nums->aint_len(); i += 1 {
+        num := nums[i]
+
+        if num == 0 {
+            new_nums->aint_push(1)
+        } else if num_digits(num) % 2 == 0 {
+            num_s := int_to_str(num)
+
+            len := num_s->strlen()
+            half_len := len / 2
+
+            new_nums->aint_push(substr(num_s, 0, half_len)->str_to_int())
+            new_nums->aint_push(substr(num_s, half_len, len)->str_to_int())
+        } else {
+            new_nums->aint_push(num * 2024)
+        }
+    }
+
+    return new_nums
+}
+
+nums = aint(7568)
+
+for i := 0; i < 25; i += 1 {
+    nums = blink(nums)
+}
+
+printf("%q\n", nums->aint_len())
+printf("%q\n", num_to_count_after_blinks(7568, 0))
