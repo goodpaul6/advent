@@ -1,0 +1,47 @@
+use import("util.tiny")
+
+data := read_file("inputs/day11.txt")
+
+parts := split_by_char(split_by_char(data, '\n')[0], ' ')
+nums := strs_to_ints(parts)->r_aint_unwrap()
+
+func num_digits(v: int): int {
+    digits := 0
+
+    while v > 0 {
+        v /= 10
+        digits += 1
+    }
+
+    return digits
+}
+
+func blink(nums: aint): aint {
+    new_nums := aint()
+
+    for i := 0; i < nums->aint_len(); i += 1 {
+        num := nums[i]
+
+        if num == 0 {
+            new_nums->aint_push(1)
+        } else if num_digits(num) % 2 == 0 {
+            num_s := int_to_str(num)
+
+            len := num_s->strlen()
+            half_len := len / 2
+
+            new_nums->aint_push(substr(num_s, 0, half_len)->str_to_int())
+            new_nums->aint_push(substr(num_s, half_len, len)->str_to_int())
+        } else {
+            new_nums->aint_push(num * 2024)
+        }
+    }
+
+    return new_nums
+}
+
+for i := 0; i < 25; i += 1 {
+    nums = blink(nums)
+}
+
+printf("%q\n", nums->aint_len())
