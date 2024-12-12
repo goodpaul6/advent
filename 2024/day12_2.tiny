@@ -1,0 +1,173 @@
+use import("util.tiny")
+
+data := read_file("inputs/day12_test.txt")
+
+lines := split_by_char(data, '\n')
+lines->astr_pop()
+
+w := lines[0]->strlen()
+h := lines->astr_len()
+
+
+// Flood fill
+func fill_region(lines: astr, w: int, h: int, x: int, y: int, init_ch: int, region: int, dest: aint, level: int) {
+    if x < 0 || x >= w {
+        return;
+    }
+
+    if y < 0 || y >= h {
+        return;
+    }
+
+    // Already assigned
+    if dest[x + y * w] > 0 {
+        return;
+    }
+
+    if lines[y][x] != init_ch {
+        return;
+    }
+
+    dest[x + y * w] = region
+
+    fill_region(lines, w, h, x - 1, y, init_ch, region, dest, level + 1)
+    fill_region(lines, w, h, x + 1, y, init_ch, region, dest, level + 1)
+    fill_region(lines, w, h, x, y - 1, init_ch, region, dest, level + 1)
+    fill_region(lines, w, h, x, y + 1, init_ch, region, dest, level + 1)
+}
+
+// Identify by region number rather than by plant
+func make_regions(): aint {
+    regs := aint()
+    regs->aint_resize_fill(w * h, 0)
+
+    rc := 1
+
+    foreach row, y in lines {
+        foreach val, x in row {
+            if regs[x + y * w] != 0 {
+                continue
+            }
+
+            fill_region(lines, w, h, x, y, val, rc, regs, 0)
+            rc += 1
+        }
+    }
+
+    return regs
+}
+
+func d_add_one(d: dict, key: int) {
+    prev := d[key]
+    
+    if prev == null {
+        prev = 0
+    }
+
+    prev += 1
+    d->dict_put(key, prev)
+}
+
+func area(rows: aint, w: int, h: int): dict {
+    d := dict()
+
+    for y := 0; y < h; y += 1 {
+        for x := 0; x < w; x += 1 {
+            val := rows[x + y * w]
+
+            d->d_add_one(val)
+        }
+    }
+
+    return d
+}
+
+func sides(rows: aint, w: int, h: int, area_d: dict): dict {
+    d := dict()
+
+    foreach area_ch_raw in area_d->dict_keys() {
+        area_ch := cast(area_ch_raw, int)
+
+        printf("region=%i\n", area_ch)
+
+        // This is the _outline_ of the region.
+        // We fill it with true (1) where it ought to be
+        //
+        // AAAA
+        // ..AA
+        //
+        // Turns into
+        // 
+        // 111111
+        // 100001
+        // 111001
+        // 001111
+        //
+        // Then we follow along the outline to count how many
+        // sides there are. We start with one side, and every time
+        // we turn we add a side until we reach back to
+        // a point we already covered.
+        //
+        // Note that the outline contains diagonals too
+        ol := aint()
+
+        ww := w + 2
+        hh := h + 2
+
+        ol->aint_resize_fill(ww * hh, 0)
+
+        for y := 0; y < h; y += 1 {
+            for x := 0; x < w; x += 1 {
+                val := rows[x + y * w]
+
+                if val != area_ch {
+                    continue
+                }
+
+                xx := x + 1
+                yy := y + 1
+
+                // Left
+                if x - 1 < 0 || rows[(x - 1) + y * w] != area_ch {
+                    ol[(xx - 1) + yy * ww] = 1
+                }
+
+                // Right
+                if x + 1 >= w || rows[(x + 1) + y * w] != area_ch {
+                    ol[(xx + 1) + yy * ww] = 1
+                }
+
+                // Above
+                if y - 1 < 0 || rows[x + (y - 1) * w] != area_ch {
+                    ol[xx + (yy - 1) * ww] = 1
+                }
+
+                // Below
+                if y + 1 >= h || rows[x + (y + 1) * w] != area_ch {
+                    ol[xx + (yy + 1) * ww] = 1
+                }
+            }
+        }
+
+        print_aint_grid(ol, ww, hh)
+    }
+
+    return d
+}
+
+regs := make_regions()
+
+area_d := area(regs, w, h)
+
+sides_d := sides(regs, w, h, area_d)
+
+// 
+// perim_d := perim(regs, w, h, area_d)
+// 
+// price := 0
+// 
+// foreach pkv in perim_d->dict_iter() {
+//     price += cast(pkv.value, int) * cast(area_d[pkv.key], int)
+// }
+// 
+// printf("%q\n", price)

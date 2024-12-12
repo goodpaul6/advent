@@ -94,3 +94,11 @@ func DictIter_len(iter: DictIter): int {
     return iter.keys->array_any_len()
 }
 
+func print_aint_grid(ag: aint, w: int, h: int) {
+    for y := 0; y < h; y += 1 {
+        for x := 0; x < w; x += 1 {
+            printf("%i ", ag[x + y * w])
+        }
+        printf("\n")
+    }
+}
