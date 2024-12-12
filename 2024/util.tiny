@@ -102,3 +102,12 @@ func print_aint_grid(ag: aint, w: int, h: int) {
         printf("\n")
     }
 }
+
+func print_aint_grid_single_digit(ag: aint, w: int, h: int) {
+    for y := 0; y < h; y += 1 {
+        for x := 0; x < w; x += 1 {
+            printf("%i", ag[x + y * w])
+        }
+        printf("\n")
+    }
+}

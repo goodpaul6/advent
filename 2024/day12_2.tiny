@@ -8,7 +8,6 @@ lines->astr_pop()
 w := lines[0]->strlen()
 h := lines->astr_len()
 
-
 // Flood fill
 func fill_region(lines: astr, w: int, h: int, x: int, y: int, init_ch: int, region: int, dest: aint, level: int) {
     if x < 0 || x >= w {
@@ -94,6 +93,154 @@ func gr_get(rows: aint, w: int, h: int, x: int, y: int): int {
     return rows[x + y * w]
 }
 
+// Call repeatedly until it returns zero and add the results
+func trace_one_outline_sides(ol: aint, ww: int, hh: int): int {
+    start_xx := -1
+    start_yy := -1
+
+    // Find start pos
+    for yy := 0; yy < hh; yy += 1 {
+        for xx := 0; xx < ww; xx += 1 {
+            if ol[xx + yy * ww] > 0 {
+                start_xx = xx
+                start_yy = yy
+                // TODO(Apaar): Break multiple levels
+                break
+            }
+        }
+        
+        if start_xx >= 0 {
+            break
+        }
+    }
+
+    if start_xx == -1 && start_yy == -1 {
+        // No outline left, we've traced all of it
+        return 0
+    }
+
+    // printf("start_pos=%q %q\n", start_xx, start_yy)
+
+    // We start off of the start. The _smallest_ outline
+    // always has at least 2 chars e.g.
+    //
+    //  A
+    //
+    //
+    // 111
+    // 101
+    // 111
+    //
+    // so this is fine
+    xx := start_xx + 1
+    yy := start_yy
+
+    ol[start_xx + start_yy * ww] = 0
+    
+    // Remember which parts we already visited to clear them out later
+    // vis := aint()
+    // vis->aint_resize_fill(ww * hh, 0)
+    // vis[start_xx + start_yy * ww] = 1
+
+    dx := 1
+    dy := 0
+
+    sides := 1
+    
+    // print_aint_grid_single_digit(ol, ww, hh)
+
+    while xx != start_xx || yy != start_yy {
+        // Clear it out as we go
+        ol[xx + yy * ww] = 0
+        dval := ol->gr_get(ww, hh, xx + dx, yy + dy)
+
+        // Keep going while we're on track
+        if dval == 1 {
+            xx += dx
+            yy += dy
+            continue
+        } else if dx == 0 && dy == -1 {
+            break
+        }
+
+        // If we keep going this way, we'll fall off the outline. Turn, but not the
+        // way we came
+        prev_dx := dx
+        prev_dy := dy
+
+        // Always rotate clockwise or counterclockwise and continue
+        if dx == 1 {
+            if ol->gr_get(ww, hh, xx, yy + 1) > 0 {
+                // Clockwise
+                dx = 0
+                dy = 1
+            } else if ol->gr_get(ww, hh, xx, yy - 1) > 0 {
+                // Counter clockwise
+                dx = 0
+                dy = -1
+            }
+        } else if dy == 1 {
+            if ol->gr_get(ww, hh, xx - 1, yy) > 0 {
+                // Clockwise
+                dx = -1
+                dy = 0
+            } else if ol->gr_get(ww, hh, xx + 1, yy) > 0 {
+                // Counter clockwise
+                dx = 1
+                dy = 0
+            }
+        } else if dx == -1 {
+            if ol->gr_get(ww, hh, xx, yy - 1) > 0 {
+                // Clockwise
+                dx = 0
+                dy = -1
+            } else if ol->gr_get(ww, hh, xx, yy + 1) > 0 {
+                // Counter clockwise
+                dx = 0
+                dy = 1
+            }
+        } else if dy == -1 {
+            if ol->gr_get(ww, hh, xx + 1, yy) > 0 {
+                // Clockwise
+                dx = 1
+                dy = 0
+            } else if ol->gr_get(ww, hh, xx - 1, yy) > 0 {
+                // Counter clockwise
+                dx = -1
+                dy = 0
+            }
+        }
+
+        if dx == prev_dx && dy == prev_dy {
+            // Nowhere to turn
+            break
+        }
+
+        // printf("turned %q %q to %q %q (sides=%q)\n", prev_dx, prev_dy, dx, dy, sides + 1)
+        sides += 1
+    }
+
+    // Add the number of clockwise turns needed to turn upwards
+    sides += if dx == 1 && dy == 0          3
+             else if dx == 0 && dy == 1     2
+             else if dx == -1 && dy == 0    1
+             else                           0
+
+    // Clear outline where visited
+    // for y := 0; y < hh; y += 1 {
+    //     for x := 0; x < ww; x += 1 {
+    //         if vis[x + y * ww] == 1 {
+    //             ol[x + y * ww] = 0
+    //         }
+    //     }
+    // }
+    
+    printf("after a trace (dx=%q dy=%q sides=%q):\n", dx, dy, sides)
+    print_aint_grid_single_digit(ol, ww, hh)
+
+    return sides
+}
+
 func sides(rows: aint, w: int, h: int, area_d: dict): dict {
     d := dict()
 
@@ -101,6 +248,7 @@ func sides(rows: aint, w: int, h: int, area_d: dict): dict {
         area_ch := cast(area_ch_raw, int)
 
         printf("region=%i\n", area_ch)
+        print_aint_grid(rows, w, h)
 
         // This is the _outline_ of the region.
         // We fill it with true (1) where it ought to be
@@ -181,7 +329,23 @@ func sides(rows: aint, w: int, h: int, area_d: dict): dict {
             }
         }
 
-        print_aint_grid(ol, ww, hh)
+        // printf("outline:\n")
+        // print_aint_grid(ol, ww, hh)
+
+        sides := 0
+
+        while true {
+            res := trace_one_outline_sides(ol, ww, hh)
+            if res == 0 {
+                break
+            }
+            sides += res
+        }
+
+        d[area_ch] = sides
+
+        // printf("sides=%q\n", sides)
+        // debug_break()
     }
 
     return d
@@ -193,13 +357,10 @@ area_d := area(regs, w, h)
 
 sides_d := sides(regs, w, h, area_d)
 
-// 
-// perim_d := perim(regs, w, h, area_d)
-// 
-// price := 0
-// 
-// foreach pkv in perim_d->dict_iter() {
-//     price += cast(pkv.value, int) * cast(area_d[pkv.key], int)
-// }
-// 
-// printf("%q\n", price)
+price := 0
+
+foreach pkv in sides_d->dict_iter() {
+    price += cast(pkv.value, int) * cast(area_d[pkv.key], int)
+}
+
+printf("%q\n", price)
