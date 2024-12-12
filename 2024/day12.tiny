@@ -8,27 +8,75 @@ lines->astr_pop()
 w := lines[0]->strlen()
 h := lines->astr_len()
 
+func d_add_one(d: dict, key: int) {
+    prev := d->dict_get(key)
+    
+    if prev == null {
+        prev = 0
+    }
+
+    prev += 1
+    d->dict_put(key, prev)
+}
+
 func area(lines: astr, w: int, h: int): dict {
     d := dict()
 
     foreach row, y in lines {
         foreach val, x in row {
-            prev := d->dict_get(val)
-            
-            if prev == null {
-                prev = 0
-            }
-
-            prev += 1
-            d->dict_put(val, prev)
+            d->d_add_one(val)
         }
     }
 
     return d
 }
 
-d := area(lines, w, h)
+func perim(lines: astr, w: int, h: int, area_d: dict): dict {
+    d := dict()
 
-foreach kv in d->dict_iter() {
-    printf("%c %q\n", kv.key, kv.value)
+    foreach area_ch_raw in area_d->dict_keys() {
+        area_ch := cast(area_ch_raw, int)
+
+        foreach row, y in lines {
+            foreach val, x in row {
+                if val != area_ch {
+                    continue
+                }
+
+                // Left
+                if x - 1 < 0 || row[x - 1] != area_ch {
+                    d->d_add_one(area_ch)
+                }
+
+                // Right
+                if x + 1 >= w || row[x + 1] != area_ch {
+                    d->d_add_one(area_ch)
+                }
+
+                // Above
+                if y - 1 < 0 || lines[y - 1][x] != area_ch {
+                    d->d_add_one(area_ch)
+                }
+
+                // Below
+                if y + 1 >= h || lines[y + 1][x] != area_ch {
+                    d->d_add_one(area_ch)
+                }
+            }
+        }
+    }
+
+    return d
+}
+
+area_d := area(lines, w, h)
+
+// foreach kv in area_d->dict_iter() {
+//     printf("%c %q\n", kv.key, kv.value)
+// }
+
+perim_d := perim(lines, w, h, area_d)
+
+foreach pkv in perim_d->dict_iter() {
+    printf("%c %q\n", pkv.key, pkv.value)
 }
