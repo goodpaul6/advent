@@ -1,6 +1,6 @@
 use import("util.tiny")
 
-data := read_file("inputs/day12_example.txt")
+data := read_file("inputs/day12.txt")
 
 lines := split_by_char(data, '\n')
 lines->astr_pop()
@@ -8,8 +8,53 @@ lines->astr_pop()
 w := lines[0]->strlen()
 h := lines->astr_len()
 
+
+// Flood fill
+func fill_region(lines: astr, w: int, h: int, x: int, y: int, init_ch: int, region: int, dest: aint, level: int) {
+    if x < 0 || x >= w {
+        return;
+    }
+
+    if y < 0 || y >= h {
+        return;
+    }
+
+    // Already assigned
+    if dest[x + y * w] > 0 {
+        return;
+    }
+
+    if lines[y][x] != init_ch {
+        return;
+    }
+
+    dest[x + y * w] = region
+
+    fill_region(lines, w, h, x - 1, y, init_ch, region, dest, level + 1)
+    fill_region(lines, w, h, x + 1, y, init_ch, region, dest, level + 1)
+    fill_region(lines, w, h, x, y - 1, init_ch, region, dest, level + 1)
+    fill_region(lines, w, h, x, y + 1, init_ch, region, dest, level + 1)
+}
+
+// Identify by region number rather than by plant
+func make_regions(): aint {
+    regs := aint()
+    regs->aint_resize_fill(w * h, 0)
+
+    rc := 1
+
+    foreach row, y in lines {
+        foreach val, x in row {
+            fill_region(lines, w, h, x, y, val, rc, regs, 0)
+            rc += 1
+        }
+    }
+
+    return regs
+}
+
 func d_add_one(d: dict, key: int) {
-    prev := d->dict_get(key)
+    prev := d[key]
     
     if prev == null {
         prev = 0
@@ -19,11 +64,13 @@ func d_add_one(d: dict, key: int) {
     d->dict_put(key, prev)
 }
 
-func area(lines: astr, w: int, h: int): dict {
+func area(rows: aint, w: int, h: int): dict {
     d := dict()
 
-    foreach row, y in lines {
-        foreach val, x in row {
+    for y := 0; y < h; y += 1 {
+        for x := 0; x < w; x += 1 {
+            val := rows[x + y * w]
+
             d->d_add_one(val)
         }
     }
@@ -31,35 +78,37 @@ func area(lines: astr, w: int, h: int): dict {
     return d
 }
 
-func perim(lines: astr, w: int, h: int, area_d: dict): dict {
+func perim(rows: aint, w: int, h: int, area_d: dict): dict {
     d := dict()
 
     foreach area_ch_raw in area_d->dict_keys() {
         area_ch := cast(area_ch_raw, int)
 
-        foreach row, y in lines {
-            foreach val, x in row {
+        for y := 0; y < h; y += 1 {
+            for x := 0; x < w; x += 1 {
+                val := rows[x + y * w]
+
                 if val != area_ch {
                     continue
                 }
 
                 // Left
-                if x - 1 < 0 || row[x - 1] != area_ch {
+                if x - 1 < 0 || rows[(x - 1) + y * w] != area_ch {
                     d->d_add_one(area_ch)
                 }
 
                 // Right
-                if x + 1 >= w || row[x + 1] != area_ch {
+                if x + 1 >= w || rows[(x + 1) + y * w] != area_ch {
                     d->d_add_one(area_ch)
                 }
 
                 // Above
-                if y - 1 < 0 || lines[y - 1][x] != area_ch {
+                if y - 1 < 0 || rows[x + (y - 1) * w] != area_ch {
                     d->d_add_one(area_ch)
                 }
 
                 // Below
-                if y + 1 >= h || lines[y + 1][x] != area_ch {
+                if y + 1 >= h || rows[x + (y + 1) * w] != area_ch {
                     d->d_add_one(area_ch)
                 }
             }
@@ -69,14 +118,16 @@ func perim(lines: astr, w: int, h: int, area_d: dict): dict {
     return d
 }
 
-area_d := area(lines, w, h)
+regs := make_regions()
 
-// foreach kv in area_d->dict_iter() {
-//     printf("%c %q\n", kv.key, kv.value)
-// }
+area_d := area(regs, w, h)
 
-perim_d := perim(lines, w, h, area_d)
+perim_d := perim(regs, w, h, area_d)
+
+price := 0
 
 foreach pkv in perim_d->dict_iter() {
-    printf("%c %q\n", pkv.key, pkv.value)
+    price += cast(pkv.value, int) * cast(area_d[pkv.key], int)
 }
+
+printf("%q\n", price)
