@@ -1,0 +1,12 @@
+use import("util.tiny")
+
+func test() {
+    x := 10
+    y := 20
+    
+    foreach _x in aint(10, 20, 30) {
+        debug_break()
+    }
+}
+
+test()

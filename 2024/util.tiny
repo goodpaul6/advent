@@ -71,3 +71,26 @@ func aint_has(a: aint, v: int): bool {
     return false
 }
 
+struct DictIter {
+    d: dict
+    keys: array_any
+}
+
+struct DictIterKeyValue {
+    key: any
+    value: any
+}
+
+func dict_iter(d: dict): DictIter {
+    return new DictIter{d, dict_keys(d)}
+}
+
+func DictIter_get_index(iter: DictIter, i: int): DictIterKeyValue {
+    key := iter.keys[i]
+    return new DictIterKeyValue{key, iter.d->dict_get(key)}
+}
+
+func DictIter_len(iter: DictIter): int {
+    return iter.keys->array_any_len()
+}
+

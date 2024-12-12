@@ -1,0 +1,34 @@
+use import("util.tiny")
+
+data := read_file("inputs/day12_example.txt")
+
+lines := split_by_char(data, '\n')
+lines->astr_pop()
+
+w := lines[0]->strlen()
+h := lines->astr_len()
+
+func area(lines: astr, w: int, h: int): dict {
+    d := dict()
+
+    foreach row, y in lines {
+        foreach val, x in row {
+            prev := d->dict_get(val)
+            
+            if prev == null {
+                prev = 0
+            }
+
+            prev += 1
+            d->dict_put(val, prev)
+        }
+    }
+
+    return d
+}
+
+d := area(lines, w, h)
+
+foreach kv in d->dict_iter() {
+    printf("%c %q\n", kv.key, kv.value)
+}
