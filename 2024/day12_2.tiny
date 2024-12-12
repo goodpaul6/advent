@@ -138,9 +138,9 @@ func trace_one_outline_sides(ol: aint, ww: int, hh: int): int {
     ol[start_xx + start_yy * ww] = 0
     
     // Remember which parts we already visited to clear them out later
-    // vis := aint()
-    // vis->aint_resize_fill(ww * hh, 0)
-    // vis[start_xx + start_yy * ww] = 1
+    vis := aint()
+    vis->aint_resize_fill(ww * hh, 0)
+    vis[start_xx + start_yy * ww] = 1
 
     dx := 1
     dy := 0
@@ -149,9 +149,12 @@ func trace_one_outline_sides(ol: aint, ww: int, hh: int): int {
     
     // print_aint_grid_single_digit(ol, ww, hh)
 
-    while xx != start_xx || yy != start_yy {
-        // Clear it out as we go
-        ol[xx + yy * ww] = 0
+    while xx != start_xx || yy != start_yy ||
+          // Facing upwards
+          dx != 0 || dy != -1 {
+        // Remember we visited
+        vis[xx + yy * ww] = 1
+
         dval := ol->gr_get(ww, hh, xx + dx, yy + dy)
 
         // Keep going while we're on track
@@ -159,8 +162,6 @@ func trace_one_outline_sides(ol: aint, ww: int, hh: int): int {
             xx += dx
             yy += dy
             continue
-        } else if dx == 0 && dy == -1 {
-            break
         }
 
         // If we keep going this way, we'll fall off the outline. Turn, but not the
@@ -211,11 +212,6 @@ func trace_one_outline_sides(ol: aint, ww: int, hh: int): int {
             }
         }
 
-        if dx == prev_dx && dy == prev_dy {
-            // Nowhere to turn
-            break
-        }
-
         // printf("turned %q %q to %q %q (sides=%q)\n", prev_dx, prev_dy, dx, dy, sides + 1)
         sides += 1
     }
@@ -227,13 +223,13 @@ func trace_one_outline_sides(ol: aint, ww: int, hh: int): int {
              else                           0
 
     // Clear outline where visited
-    // for y := 0; y < hh; y += 1 {
-    //     for x := 0; x < ww; x += 1 {
-    //         if vis[x + y * ww] == 1 {
-    //             ol[x + y * ww] = 0
-    //         }
-    //     }
-    // }
+    for y := 0; y < hh; y += 1 {
+        for x := 0; x < ww; x += 1 {
+            if vis[x + y * ww] == 1 {
+                ol[x + y * ww] = 0
+            }
+        }
+    }
     
     printf("after a trace (dx=%q dy=%q sides=%q):\n", dx, dy, sides)
     print_aint_grid_single_digit(ol, ww, hh)
@@ -329,8 +325,8 @@ func sides(rows: aint, w: int, h: int, area_d: dict): dict {
             }
         }
 
-        // printf("outline:\n")
-        // print_aint_grid(ol, ww, hh)
+        printf("outline:\n")
+        print_aint_grid(ol, ww, hh)
 
         sides := 0
 
@@ -344,8 +340,8 @@ func sides(rows: aint, w: int, h: int, area_d: dict): dict {
 
         d[area_ch] = sides
 
-        // printf("sides=%q\n", sides)
-        // debug_break()
+        printf("sides=%q\n", sides)
+        debug_break()
     }
 
     return d
