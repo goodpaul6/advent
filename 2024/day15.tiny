@@ -1,10 +1,176 @@
 use import("util.tiny")
 
-data := read_file("inputs/day15_example.txt")
+struct V2 {
+    x: int
+    y: int
+}
+
+func v2_add(a: V2, b: V2): V2 {
+    return new V2{a.x + b.x, a.y + b.y}
+}
+
+func v2_sub(a: V2, b: V2): V2 {
+    return new V2{a.x - b.x, a.y - b.y}
+}
+
+EMPTY :: 0
+BOX :: 1
+WALL :: 2
+
+struct World {
+    w: int
+    h: int
+    rows: aint
+    bot_pos: V2
+}
+
+data := read_file("inputs/day15.txt")
 
 lines := data->split_by_char('\n')
 lines->astr_pop()
 
-foreach line in lines {
-    printf("%q\n", line)
+func parse_world(lines: astr): World {
+    w := lines[0]->strlen()
+    h := lines->astr_len()
+
+    rows := aint()
+    rows->aint_resize_fill(w * h, EMPTY)
+
+    bot_pos := new V2{0, 0}
+
+    for y := 0; y < h; y += 1 {
+        for x := 0; x < w; x += 1 {
+            ch := lines[y][x]
+
+            rows[x + y * w] = if ch == '#' WALL
+                              else if ch == 'O' BOX
+                              else EMPTY
+
+            if ch == '@' {
+                bot_pos.x = x
+                bot_pos.y = y
+            }
+        }
+    }
+
+    return new World{
+        .w = w,
+        .h = h,
+        .rows = rows,
+        .bot_pos = bot_pos
+    }
 }
+
+func get_tile(w: World, x: int, y: int): int {
+    if x < 0 || x >= w.w {
+        return -1
+    }
+
+    if y < 0 || y >= w.h {
+        return -1
+    }
+
+    return w.rows[x + y * w.w]
+}
+
+func move_box(w: World, x: int, y: int, dx: int, dy: int): bool {
+    if w->get_tile(x, y) != BOX {
+        return false
+    }
+
+    dest_tile := w->get_tile(x + dx, y + dy)
+
+    if dest_tile == BOX {
+        if !w->move_box(x + dx, y + dy, dx, dy) {
+            return false
+        }
+    } else if dest_tile != EMPTY {
+        return false
+    }
+
+    w.rows[x + y * w.w] = EMPTY
+    w.rows[(x + dx) + (y + dy) * w.w] = BOX
+
+    return true
+}
+
+func run_moves(w: World, moves: str) {
+    foreach move, i in moves {
+        // printf("before move %i (%c, pos=%q)\n", i, move, w.bot_pos)
+        // print_aint_grid(w.rows, w.w, w.h)
+
+        dx := 0
+        dy := 0
+
+        if move == '<' {
+            dx = -1
+        } else if move == '^' {
+            dy = -1
+        } else if move == '>' {
+            dx = 1
+        } else if move == 'v' {
+            dy = 1
+        }
+
+        xx := w.bot_pos.x + dx
+        yy := w.bot_pos.y + dy
+
+        val := w->get_tile(xx, yy)
+
+        if val == BOX {
+            if !w->move_box(xx, yy, dx, dy) {
+                // Could not move box so just continue
+                continue
+            }
+        } else if val != EMPTY {
+            // Can't move here
+            continue
+        }
+
+        // Moved successfully
+        w.bot_pos.x = xx
+        w.bot_pos.y = yy
+    }
+
+    printf("final state:\n")
+    print_aint_grid(w.rows, w.w, w.h)
+}
+
+// Separate on empty line
+world_lines := astr()
+moves := ""
+
+parsing_moves := false
+
+foreach line, i in lines {
+    if parsing_moves {
+        moves = strcat(moves, line)
+        continue
+    }
+
+    if line == "" {
+        parsing_moves = true
+        continue
+    }
+
+    world_lines->astr_push(line)
+}
+
+world := parse_world(world_lines)
+
+printf("%q\n", world)
+printf("%q\n", moves)
+
+world->run_moves(moves)
+
+score := 0
+
+for y := 0; y < world.h; y += 1 {
+    for x := 0; x < world.w; x += 1 {
+        if world.rows[x + y * world.w] == BOX {
+            score += x + y * 100
+        }
+    }
+}
+
+printf("%q\n", score)
