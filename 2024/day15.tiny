@@ -1,0 +1,10 @@
+use import("util.tiny")
+
+data := read_file("inputs/day15_example.txt")
+
+lines := data->split_by_char('\n')
+lines->astr_pop()
+
+foreach line in lines {
+    printf("%q\n", line)
+}
