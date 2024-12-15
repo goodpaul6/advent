@@ -1,0 +1,277 @@
+use import("util.tiny")
+
+struct V2 {
+    x: int
+    y: int
+}
+
+func v2_add(a: V2, b: V2): V2 {
+    return new V2{a.x + b.x, a.y + b.y}
+}
+
+func v2_sub(a: V2, b: V2): V2 {
+    return new V2{a.x - b.x, a.y - b.y}
+}
+
+EMPTY :: 0
+WALL :: 1
+MIN_BOX :: 2
+
+struct World {
+    w: int
+    h: int
+    rows: aint
+    bot_pos: V2
+}
+
+data := read_file("inputs/day15.txt")
+
+lines := data->split_by_char('\n')
+lines->astr_pop()
+
+func parse_world(lines: astr): World {
+    w := lines[0]->strlen()
+    h := lines->astr_len()
+
+    ww := w * 2
+
+    rows := aint()
+    rows->aint_resize_fill(ww * h, EMPTY)
+
+    bot_pos := new V2{0, 0}
+    box_id := MIN_BOX
+
+    for y := 0; y < h; y += 1 {
+        for x := 0; x < w; x += 1 {
+            ch := lines[y][x]
+
+            xx := x * 2
+            yy := y
+
+            if ch == '#' {
+                rows[xx + yy * ww] = WALL
+                rows[(xx + 1) + yy * ww] = WALL
+            } else if ch == 'O' {
+                rows[xx + yy * ww] = box_id
+                rows[(xx + 1) + yy * ww] = box_id
+                box_id += 1
+            }
+
+            if ch == '@' {
+                bot_pos.x = xx
+                bot_pos.y = yy
+            }
+        }
+    }
+
+    return new World{
+        .w = ww,
+        .h = h,
+        .rows = rows,
+        .bot_pos = bot_pos
+    }
+}
+
+func get_tile(w: World, x: int, y: int): int {
+    if x < 0 || x >= w.w {
+        return -1
+    }
+
+    if y < 0 || y >= w.h {
+        return -1
+    }
+
+    return w.rows[x + y * w.w]
+}
+
+func move_box(w: World, x: int, y: int, dx: int, dy: int): bool {
+    box_id := w->get_tile(x, y)
+
+    if box_id < MIN_BOX {
+        return false
+    }
+
+    ox := -1
+    oy := -1
+
+    left_box := w->get_tile(x - 1, y)
+
+    if left_box == box_id { 
+        ox = x
+        oy = y
+        x = x - 1
+        y = y
+    } else {
+        // Assume its on the right of us because player cannot 
+        // push part of a box idependently
+        ox = x + 1
+        oy = y
+    }
+    
+    printf("moving %q at %q %q (with pair at %q %q) by %q %q\n", box_id, x, y, ox, oy, dx, dy)
+
+    if dx < 0 {
+        d := w->get_tile(x + dx, y + dy)
+        
+        // Try moving the box to the left of us
+        if d >= MIN_BOX {
+            if !w->move_box(x + dx, y + dy, dx, dy) {
+                return false
+            }
+        } else if d != EMPTY {
+            return false
+        }
+
+        w.rows[ox + oy * w.w] = EMPTY
+        w.rows[(x + dx) + (y + dy) * w.w] = box_id
+    } else if dx > 0 {
+        d := w->get_tile(ox + dx, oy + dy)
+        
+        // Try moving the box to the right of us
+        if d >= MIN_BOX {
+            if !w->move_box(ox + dx, oy + dy, dx, dy) {
+                return false
+            }
+        } else if d != EMPTY {
+            return false
+        }
+
+        w.rows[x + y * w.w] = EMPTY
+        w.rows[(ox + dx) + (oy + dy) * w.w] = box_id
+    } else {
+        d1 := w->get_tile(x + dx, y + dy)
+ 
+        if d1 >= MIN_BOX {
+            if w->move_box(x + dx, y + dy, dx, dy) {
+                // All good
+            } else {
+                return false
+            }
+        } else if d1 != EMPTY {
+            return false
+        }
+
+        d2 := w->get_tile(ox + dx, oy + dy)
+
+        if d2 >= MIN_BOX {
+            if w->move_box(ox + dx, oy + dy, dx, dy) {
+                // Should be good 
+            } else {
+                return false
+            }
+        } else if d2 != EMPTY {
+            return false
+        }
+
+        w.rows[ox + oy * w.w] = EMPTY
+        w.rows[(ox + dx) + (oy + dy) * w.w] = box_id
+
+        w.rows[x + y * w.w] = EMPTY
+        w.rows[(x + dx) + (y + dy) * w.w] = box_id
+    }
+
+    printf("moved box %q at %q %q to %q %q\n", box_id, x, y, x + dx, y + dy)
+    printf("moved box partner %q at %q %q to %q %q\n", box_id, ox, oy, ox + dx, oy + dy)
+
+    return true
+}
+
+func run_moves(w: World, moves: str) {
+    foreach move, i in moves {
+        printf("before move %i (%c, pos=%q)\n", i, move, w.bot_pos)
+        // w.rows[w.bot_pos.x + w.bot_pos.y * w.w] = 999
+        // print_aint_grid_w(w.rows, w.w, w.h, 5)
+        // w.rows[w.bot_pos.x + w.bot_pos.y * w.w] = EMPTY
+
+        // debug_break()
+
+        dx := 0
+        dy := 0
+
+        if move == '<' {
+            dx = -1
+        } else if move == '^' {
+            dy = -1
+        } else if move == '>' {
+            dx = 1
+        } else if move == 'v' {
+            dy = 1
+        }
+
+        xx := w.bot_pos.x + dx
+        yy := w.bot_pos.y + dy
+
+        val := w->get_tile(xx, yy)
+
+        if val >= MIN_BOX {
+            prev_rows := aint()
+            prev_rows->aint_copy(w.rows)
+
+            if !w->move_box(xx, yy, dx, dy) {
+                w.rows = prev_rows
+                // Could not move box so just continue
+                continue
+            }
+        } else if val != EMPTY {
+            // Can't move here
+            continue
+        }
+
+        // Moved successfully
+        w.bot_pos.x = xx
+        w.bot_pos.y = yy
+    }
+
+    // printf("final state:\n")
+    // print_aint_grid(w.rows, w.w, w.h)
+}
+
+// Separate on empty line
+world_lines := astr()
+moves := ""
+
+parsing_moves := false
+
+foreach line, i in lines {
+    if parsing_moves {
+        moves = strcat(moves, line)
+        continue
+    }
+
+    if line == "" {
+        parsing_moves = true
+        continue
+    }
+
+    world_lines->astr_push(line)
+}
+
+world := parse_world(world_lines)
+
+// printf("initial state %q\n", world.bot_pos)
+// print_aint_grid(world.rows, world.w, world.h)
+
+world->run_moves(moves)
+
+score := 0
+
+counted_boxes := dict()
+
+for y := 0; y < world.h; y += 1 {
+    for x := 0; x < world.w; x += 1 {
+        box_id := world.rows[x + y * world.w]
+        if box_id < MIN_BOX {
+            continue
+        }
+
+        if counted_boxes->dict_exists(box_id) {
+            continue
+        }
+
+        score += x + y * 100
+        // Do not double count
+        counted_boxes->dict_put(box_id, true)
+    }
+}
+
+printf("%q\n", score)

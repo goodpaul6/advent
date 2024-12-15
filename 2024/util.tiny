@@ -103,6 +103,28 @@ func print_aint_grid(ag: aint, w: int, h: int) {
     }
 }
 
+func print_aint_grid_w(ag: aint, w: int, h: int, ch_w: int) {
+    for y := 0; y < h; y += 1 {
+        for x := 0; x < w; x += 1 {
+            digits := 1
+            
+            v := ag[x + y * w]
+            while v >= 10 {
+                v /= 10
+                digits += 1
+            }
+
+            while digits < ch_w {
+                digits += 1
+                printf(" ")
+            }
+
+            printf("%i", ag[x + y * w])
+        }
+        printf("\n")
+    }
+}
+
 func print_aint_grid_single_digit(ag: aint, w: int, h: int) {
     for y := 0; y < h; y += 1 {
         for x := 0; x < w; x += 1 {
