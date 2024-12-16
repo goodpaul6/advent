@@ -1,6 +1,6 @@
 use import("util.tiny")
 
-data := read_file("inputs/day16.txt")
+data := read_file("inputs/day16_test.txt")
 
 lines := data->split_by_char('\n')
 lines->astr_pop()
@@ -92,16 +92,31 @@ func delta_y(dir: int): int {
     else return 0
 }
 
-func store_scores(w: World, x: int, y: int, dir: int, score: int, pmin: aint) {
+// Assumes x <= 0xff and y <= 0xff
+func pack_coord(x: int, y: int): int {
+    return x << 8 | y
+}
+
+func unpack_coord(c: int): V2 {
+    return new V2{(c >> 8) & 0xff, c & 0xff}
+}
+
+use array("aint") as a_aint
+
+lowest_score_paths := a_aint()
+
+func store_scores(w: World, x: int, y: int, dir: int, score: int, pmin: aint, path_so_far: aint, lowest_score: int) {
     if w->get_tile(x, y) != EMPTY {
         // Not a valid path here
         return;
     }
-    
 
+    path_so_far->aint_push(pack_coord(x, y))
+    
     v := pmin[x + y * w.w]
     if v >= 0 && v < score {
         // This is the shortest path so far since we started at the end, don't overwrite it
+        path_so_far->aint_pop()
         return;
     }
 
@@ -126,6 +141,15 @@ func store_scores(w: World, x: int, y: int, dir: int, score: int, pmin: aint) {
     pmin[x + y * w.w] = score
 
     if done {
+        if score == lowest_score {
+            path := aint()
+            // Copy because path_so_far will get mutated (it is just one array)
+            path->aint_copy(path_so_far)
+
+            // Remember this as a lowest score path
+            lowest_score_paths->a_aint_push(path)
+        }
+
         return;
     }
  
@@ -134,11 +158,23 @@ func store_scores(w: World, x: int, y: int, dir: int, score: int, pmin: aint) {
     d2 := (dir + 2) % DIR_COUNT
     d3 := (dir + 3) % DIR_COUNT
 
-    store_scores(w, x + delta_x(d0), y + delta_y(d0), d0, score + 1, pmin)
-    store_scores(w, x + delta_x(d1), y + delta_y(d1), d1, score + 1001, pmin)
-    store_scores(w, x + delta_x(d2), y + delta_y(d2), d2, score + 2001, pmin)
+    path_len := path_so_far->aint_len()
+
+    store_scores(w, x + delta_x(d0), y + delta_y(d0), d0, score + 1, path_so_far, pmin, lowest_score)
+    // Restore the path to prev size
+    path_so_far->aint_resize(path_len)
+
+    store_scores(w, x + delta_x(d1), y + delta_y(d1), d1, score + 1001, path_so_far, pmin, lowest_score)
+    path_so_far->aint_resize(path_len)
+
+    store_scores(w, x + delta_x(d2), y + delta_y(d2), d2, score + 2001, path_so_far, pmin, lowest_score)
+    path_so_far->aint_resize(path_len)
+
     // Only 1000 because we can turn counterclockwise
-    store_scores(w, x + delta_x(d3), y + delta_y(d3), d3, score + 1001, pmin)
+    store_scores(w, x + delta_x(d3), y + delta_y(d3), d3, score + 1001, path_so_far, pmin, lowest_score)
+
+    // Pop off the position we pushed as well before returning
+    path_so_far->aint_resize(path_len - 1)
 }
 
 func pm_get(pmin: aint, w: World, x: int, y: int): int {
@@ -215,31 +251,30 @@ w.pos = epos
 pmin := aint()
 pmin->aint_resize_fill(w.w * w.h, -1)
 
-// Approach from all dirs (order matters here???)
-store_scores(w, w.pos.x, w.pos.y, LEFT, 0, pmin)
-store_scores(w, w.pos.x, w.pos.y, DOWN, 0, pmin)
-store_scores(w, w.pos.x, w.pos.y, UP, 0, pmin)
-store_scores(w, w.pos.x, w.pos.y, DOWN, 0, pmin)
+path_so_far := aint()
 
-printf("score=%q\n", pmin[spos.x + spos.y * w.w])
+store_scores(w, w.pos.x, w.pos.y, LEFT, 0, path_so_far, pmin, -1)
+store_scores(w, w.pos.x, w.pos.y, DOWN, 0, path_so_far, pmin, -1)
+store_scores(w, w.pos.x, w.pos.y, UP, 0, path_so_far, pmin, -1)
+store_scores(w, w.pos.x, w.pos.y, DOWN, 0, path_so_far, pmin, -1)
 
-// print_aint_grid_w(pmin, w.w, w.h, 8)
+best_score := pmin[spos.x + spos.y * w.w]
 
-marked := abool()
-marked->abool_resize_fill(w.w * w.h, false)
+printf("score=%q\n", best_score)
 
-mark_best(w, spos.x, spos.y, pmin, marked, pmin[spos.x + spos.y * w.w])
+print_aint_grid_w(pmin, w.w, w.h, 8)
+
+// mark_best(w, spos.x, spos.y, pmin, marked, pmin[spos.x + spos.y * w.w])
 
 // print_abool_grid(marked, w.w, w.h)
 
-mark_count := 0
-
-for y := 0; y < w.h; y += 1 {
-    for x := 0; x < w.w; x += 1 {
-        if marked[x + y * w.w] {
-            mark_count += 1
-        }
-    }
-}
-
-printf("%q\n", mark_count)
+// mark_count := 0
+// 
+// for y := 0; y < w.h; y += 1 {
+//     for x := 0; x < w.w; x += 1 {
+//         if marked[x + y * w.w] {
+//             mark_count += 1
+//         }
+//     }
+// }
+// printf("%q\n", mark_count)
