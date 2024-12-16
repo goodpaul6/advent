@@ -1,6 +1,6 @@
 use import("util.tiny")
 
-data := read_file("inputs/day16_example.txt")
+data := read_file("inputs/day16.txt")
 
 lines := data->split_by_char('\n')
 lines->astr_pop()
@@ -97,9 +97,10 @@ func store_scores(w: World, x: int, y: int, dir: int, score: int, pmin: aint) {
         // Not a valid path here
         return;
     }
+    
 
     v := pmin[x + y * w.w]
-    if v >= 0 && v <= score {
+    if v >= 0 && v < score {
         // This is the shortest path so far since we started at the end, don't overwrite it
         return;
     }
@@ -107,18 +108,26 @@ func store_scores(w: World, x: int, y: int, dir: int, score: int, pmin: aint) {
     // printf("at %q %q, dir = %q score = %q\n", x, y, dir, score)
 
     // We must only store min scores for the end pos if we're facing left (opposite of right)
-    // if x == w.end_pos.x && y == w.end_pos.y {
-    //     if dir == DOWN {
-    //         // Need to turn to face right
-    //         score += 1000
-    //     } else if dir == UP {
-    //         score += 1000
-    //     } else if dir == RIGHT {
-    //         score += 2000
-    //     }
-    // }
+    done := false
+
+    if x == w.end_pos.x && y == w.end_pos.y {
+        if dir == DOWN {
+            // Need to turn to face right
+            score += 1000
+        } else if dir == UP {
+            score += 1000
+        } else if dir == RIGHT {
+            score += 2000
+        }
+
+        done = true
+    }
 
     pmin[x + y * w.w] = score
+
+    if done {
+        return;
+    }
  
     d0 := dir
     d1 := (dir + 1) % DIR_COUNT
@@ -130,6 +139,65 @@ func store_scores(w: World, x: int, y: int, dir: int, score: int, pmin: aint) {
     store_scores(w, x + delta_x(d2), y + delta_y(d2), d2, score + 2001, pmin)
     // Only 1000 because we can turn counterclockwise
     store_scores(w, x + delta_x(d3), y + delta_y(d3), d3, score + 1001, pmin)
+}
+
+func pm_get(pmin: aint, w: World, x: int, y: int): int {
+    if x < 0 || x >= w.w ||
+       y < 0 || y >= w.h {
+        return -1
+    }
+
+    return pmin[x + y * w.w]
+}
+
+func mark_best(w: World, x: int, y: int, pmin: aint, marked: abool, prev_val: int) {
+    if w->get_tile(x, y) != EMPTY {
+        return;
+    }
+
+    marked[x + y * w.w] = true
+    // printf("marking %q %q (score: %q, prev %q)\n", x, y, pmin[x + y * w.w], prev_val)
+
+    d0 := pmin->pm_get(w, x + 1, y)
+    d1 := pmin->pm_get(w, x, y + 1)
+    d2 := pmin->pm_get(w, x - 1, y)
+    d3 := pmin->pm_get(w, x, y - 1)
+
+    // printf("d0=%q d1=%q d2=%q d3=%q\n", d0, d1, d2, d3)
+    
+    best := INT_MAX
+
+    if d0 >= 0 && d0 < prev_val && d0 < best {
+        best = d0
+    }
+
+    if d1 >= 0 && d1 < prev_val && d1 < best {
+        best = d1
+    }
+
+    if d2 >= 0 && d2 < prev_val && d2 < best {
+        best = d2
+    }
+
+    if d3 >= 0 && d3 < prev_val && d3 < best {
+        best = d3
+    }
+
+    if d0 == best {
+        mark_best(w, x + 1, y, pmin, marked, best)
+    }
+
+    if d1 == best {
+        mark_best(w, x, y + 1, pmin, marked, best)
+    }
+
+    if d2 == best {
+        mark_best(w, x - 1, y, pmin, marked, best)
+    }
+    
+    if d3 == best {
+        mark_best(w, x, y - 1, pmin, marked, best)
+    }
 }
 
 w := parse_world(lines)
@@ -148,9 +216,30 @@ pmin := aint()
 pmin->aint_resize_fill(w.w * w.h, -1)
 
 // Approach from all dirs (order matters here???)
-store_scores(w, w.pos.x, w.pos.y, RIGHT, 0, pmin)
+store_scores(w, w.pos.x, w.pos.y, LEFT, 0, pmin)
+store_scores(w, w.pos.x, w.pos.y, DOWN, 0, pmin)
 store_scores(w, w.pos.x, w.pos.y, UP, 0, pmin)
 store_scores(w, w.pos.x, w.pos.y, DOWN, 0, pmin)
-store_scores(w, w.pos.x, w.pos.y, LEFT, 0, pmin)
 
-printf("%q\n", pmin[spos.x + spos.y * w.w])
+printf("score=%q\n", pmin[spos.x + spos.y * w.w])
+
+// print_aint_grid_w(pmin, w.w, w.h, 8)
+
+marked := abool()
+marked->abool_resize_fill(w.w * w.h, false)
+
+mark_best(w, spos.x, spos.y, pmin, marked, pmin[spos.x + spos.y * w.w])
+
+// print_abool_grid(marked, w.w, w.h)
+
+mark_count := 0
+
+for y := 0; y < w.h; y += 1 {
+    for x := 0; x < w.w; x += 1 {
+        if marked[x + y * w.w] {
+            mark_count += 1
+        }
+    }
+}
+
+printf("%q\n", mark_count)

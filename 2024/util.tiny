@@ -109,6 +109,12 @@ func print_aint_grid_w(ag: aint, w: int, h: int, ch_w: int) {
             digits := 1
             
             v := ag[x + y * w]
+
+            if v < 0 {
+                digits += 1
+                v *= -1
+            }
+
             while v >= 10 {
                 v /= 10
                 digits += 1
@@ -129,6 +135,15 @@ func print_aint_grid_single_digit(ag: aint, w: int, h: int) {
     for y := 0; y < h; y += 1 {
         for x := 0; x < w; x += 1 {
             printf("%i", ag[x + y * w])
+        }
+        printf("\n")
+    }
+}
+
+func print_abool_grid(ag: abool, w: int, h: int) {
+    for y := 0; y < h; y += 1 {
+        for x := 0; x < w; x += 1 {
+            printf("%i", if ag[x + y * w] 1 else 0)
         }
         printf("\n")
     }
