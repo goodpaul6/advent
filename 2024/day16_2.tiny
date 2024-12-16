@@ -110,15 +110,14 @@ func store_scores(w: World, x: int, y: int, dir: int, score: int, pmin: aint, pa
         // Not a valid path here
         return;
     }
-
-    path_so_far->aint_push(pack_coord(x, y))
-    
+ 
     v := pmin[x + y * w.w]
     if v >= 0 && v < score {
         // This is the shortest path so far since we started at the end, don't overwrite it
-        path_so_far->aint_pop()
         return;
     }
+
+    path_so_far->aint_push(pack_coord(x, y))
 
     // printf("at %q %q, dir = %q score = %q\n", x, y, dir, score)
 
@@ -160,80 +159,21 @@ func store_scores(w: World, x: int, y: int, dir: int, score: int, pmin: aint, pa
 
     path_len := path_so_far->aint_len()
 
-    store_scores(w, x + delta_x(d0), y + delta_y(d0), d0, score + 1, path_so_far, pmin, lowest_score)
+    store_scores(w, x + delta_x(d0), y + delta_y(d0), d0, score + 1, pmin, path_so_far, lowest_score)
     // Restore the path to prev size
     path_so_far->aint_resize(path_len)
 
-    store_scores(w, x + delta_x(d1), y + delta_y(d1), d1, score + 1001, path_so_far, pmin, lowest_score)
+    store_scores(w, x + delta_x(d1), y + delta_y(d1), d1, score + 1001, pmin, path_so_far, lowest_score)
     path_so_far->aint_resize(path_len)
 
-    store_scores(w, x + delta_x(d2), y + delta_y(d2), d2, score + 2001, path_so_far, pmin, lowest_score)
+    store_scores(w, x + delta_x(d2), y + delta_y(d2), d2, score + 2001, pmin, path_so_far, lowest_score)
     path_so_far->aint_resize(path_len)
 
     // Only 1000 because we can turn counterclockwise
-    store_scores(w, x + delta_x(d3), y + delta_y(d3), d3, score + 1001, path_so_far, pmin, lowest_score)
+    store_scores(w, x + delta_x(d3), y + delta_y(d3), d3, score + 1001, pmin, path_so_far, lowest_score)
 
     // Pop off the position we pushed as well before returning
     path_so_far->aint_resize(path_len - 1)
-}
-
-func pm_get(pmin: aint, w: World, x: int, y: int): int {
-    if x < 0 || x >= w.w ||
-       y < 0 || y >= w.h {
-        return -1
-    }
-
-    return pmin[x + y * w.w]
-}
-
-func mark_best(w: World, x: int, y: int, pmin: aint, marked: abool, prev_val: int) {
-    if w->get_tile(x, y) != EMPTY {
-        return;
-    }
-
-    marked[x + y * w.w] = true
-    // printf("marking %q %q (score: %q, prev %q)\n", x, y, pmin[x + y * w.w], prev_val)
-
-    d0 := pmin->pm_get(w, x + 1, y)
-    d1 := pmin->pm_get(w, x, y + 1)
-    d2 := pmin->pm_get(w, x - 1, y)
-    d3 := pmin->pm_get(w, x, y - 1)
-
-    // printf("d0=%q d1=%q d2=%q d3=%q\n", d0, d1, d2, d3)
-    
-    best := INT_MAX
-
-    if d0 >= 0 && d0 < prev_val && d0 < best {
-        best = d0
-    }
-
-    if d1 >= 0 && d1 < prev_val && d1 < best {
-        best = d1
-    }
-
-    if d2 >= 0 && d2 < prev_val && d2 < best {
-        best = d2
-    }
-
-    if d3 >= 0 && d3 < prev_val && d3 < best {
-        best = d3
-    }
-
-    if d0 == best {
-        mark_best(w, x + 1, y, pmin, marked, best)
-    }
-
-    if d1 == best {
-        mark_best(w, x, y + 1, pmin, marked, best)
-    }
-
-    if d2 == best {
-        mark_best(w, x - 1, y, pmin, marked, best)
-    }
-    
-    if d3 == best {
-        mark_best(w, x, y - 1, pmin, marked, best)
-    }
 }
 
 w := parse_world(lines)
@@ -253,10 +193,10 @@ pmin->aint_resize_fill(w.w * w.h, -1)
 
 path_so_far := aint()
 
-store_scores(w, w.pos.x, w.pos.y, LEFT, 0, path_so_far, pmin, -1)
-store_scores(w, w.pos.x, w.pos.y, DOWN, 0, path_so_far, pmin, -1)
-store_scores(w, w.pos.x, w.pos.y, UP, 0, path_so_far, pmin, -1)
-store_scores(w, w.pos.x, w.pos.y, DOWN, 0, path_so_far, pmin, -1)
+store_scores(w, w.pos.x, w.pos.y, LEFT, 0, pmin, path_so_far, -1)
+store_scores(w, w.pos.x, w.pos.y, DOWN, 0, pmin, path_so_far, -1)
+store_scores(w, w.pos.x, w.pos.y, UP, 0, pmin, path_so_far, -1)
+store_scores(w, w.pos.x, w.pos.y, DOWN, 0, pmin, path_so_far, -1)
 
 best_score := pmin[spos.x + spos.y * w.w]
 
@@ -264,17 +204,42 @@ printf("score=%q\n", best_score)
 
 print_aint_grid_w(pmin, w.w, w.h, 8)
 
-// mark_best(w, spos.x, spos.y, pmin, marked, pmin[spos.x + spos.y * w.w])
+// Run again this time keeping track of paths
+pmin->aint_resize_fill(w.w * w.h, -1)
+store_scores(w, w.pos.x, w.pos.y, LEFT, 0, pmin, path_so_far, best_score)
 
-// print_abool_grid(marked, w.w, w.h)
+pmin->aint_resize_fill(w.w * w.h, -1)
+store_scores(w, w.pos.x, w.pos.y, DOWN, 0, pmin, path_so_far, best_score)
 
-// mark_count := 0
-// 
-// for y := 0; y < w.h; y += 1 {
-//     for x := 0; x < w.w; x += 1 {
-//         if marked[x + y * w.w] {
-//             mark_count += 1
-//         }
-//     }
-// }
-// printf("%q\n", mark_count)
+pmin->aint_resize_fill(w.w * w.h, -1)
+store_scores(w, w.pos.x, w.pos.y, UP, 0, pmin, path_so_far, best_score)
+
+pmin->aint_resize_fill(w.w * w.h, -1)
+store_scores(w, w.pos.x, w.pos.y, DOWN, 0, pmin, path_so_far, best_score)
+
+printf("path count=%q\n", lowest_score_paths->a_aint_len())
+
+
+marked := abool()
+marked->abool_resize_fill(w.w * w.h, false)
+
+foreach a in lowest_score_paths {
+    foreach v in a {
+        c := unpack_coord(v)
+        printf("%q\n", c)
+        marked[c.x + c.y * w.w] = true
+    }
+}
+
+print_abool_grid(marked, w.w, w.h)
+
+mark_count := 0
+
+for y := 0; y < w.h; y += 1 {
+    for x := 0; x < w.w; x += 1 {
+        if marked[x + y * w.w] {
+            mark_count += 1
+        }
+    }
+}
+printf("%q\n", mark_count)
