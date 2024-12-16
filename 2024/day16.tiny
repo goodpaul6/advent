@@ -1,0 +1,162 @@
+use import("util.tiny")
+
+data := read_file("inputs/day16.txt")
+
+lines := data->split_by_char('\n')
+lines->astr_pop()
+
+EMPTY :: 0
+WALL  :: 1
+
+struct V2 {
+    x: int
+    y: int
+}
+
+func v2_add(a: V2, b: V2): V2 {
+    return new V2{a.x + b.x, a.y + b.y}
+}
+
+func v2_sub(a: V2, b: V2): V2 {
+    return new V2{a.x - b.x, a.y - b.y}
+}
+
+struct World {
+    w: int
+    h: int
+    rows: aint
+    pos: V2
+    end_pos: V2
+}
+
+func get_tile(w: World, x: int, y: int): int {
+    if x < 0 || x >= w.w {
+        return -1
+    }
+
+    if y < 0 || y >= w.h {
+        return -1
+    }
+
+    return w.rows[x + y * w.w]
+}
+
+func parse_world(lines: astr): World {
+    w := lines[0]->strlen()
+    h := lines->astr_len()
+
+    rows := aint()
+    rows->aint_resize_fill(w * h, EMPTY)
+
+    pos := new V2{-1, -1}
+    end_pos := new V2{-1, -1}
+
+    foreach line, y in lines {
+        foreach ch, x in line {
+            if ch == '#' {
+                rows[x+y*w] = WALL
+            } else if ch == 'S' {
+                pos.x = x
+                pos.y = y
+            } else if ch == 'E' {
+                end_pos.x = x
+                end_pos.y = y 
+            }
+        }
+    }
+
+    return new World{
+        .w = w,
+        .h = h,
+        .rows = rows,
+        .pos = pos,
+        .end_pos = end_pos,
+    }
+}
+
+RIGHT :: 0
+DOWN :: 1
+LEFT :: 2
+UP :: 3
+DIR_COUNT :: 4
+
+func delta_x(dir: int): int {
+    if dir == RIGHT return 1
+    else if dir == LEFT return -1
+    else return 0
+}
+
+func delta_y(dir: int): int {
+    if dir == DOWN return 1
+    else if dir == UP return -1
+    else return 0
+}
+
+func lowest_score_path(w: World, x: int, y: int, dir: int, score: int, vis: aint): int {
+    if w->get_tile(x, y) != EMPTY {
+        // Not a valid path here
+        return -1
+    }
+
+    if x == w.end_pos.x && y == w.end_pos.y {
+        printf("At end: %q\n", score)
+        return score
+    }
+
+    v := vis[x + y * w.w]
+    if v > 0 {
+        // Can't backtrack
+        return -1
+    }
+
+    // printf("at %q %q, dir = %q score = %q\n", x, y, dir, score)
+
+    // Prevent infinite recursion
+    vis[x + y * w.w] = 1
+ 
+    d0 := dir
+    d1 := (dir + 1) % DIR_COUNT
+    d2 := (dir + 2) % DIR_COUNT
+    d3 := (dir + 3) % DIR_COUNT
+
+    sd0 := lowest_score_path(w, x + delta_x(d0), y + delta_y(d0), d0, score + 1, vis)
+    sd1 := lowest_score_path(w, x + delta_x(d1), y + delta_y(d1), d1, score + 1 + 1000, vis)
+    sd2 := lowest_score_path(w, x + delta_x(d2), y + delta_y(d2), d2, score + 1 + 2000, vis)
+    // Only 1000 because we can turn counterclockwise
+    sd3 := lowest_score_path(w, x + delta_x(d3), y + delta_y(d3), d3, score + 1 + 1000, vis)
+
+    // Okay, backtrack
+    vis[x + y * w.w] = 0
+
+    min_score := INT_MAX
+    
+    if sd0 >= 0 && sd0 < min_score {
+        min_score = sd0
+    }
+
+    if sd1 >= 0 && sd1 < min_score {
+        min_score = sd1
+    }
+
+    if sd2 >= 0 && sd2 < min_score {
+        min_score = sd2
+    }
+
+    if sd3 >= 0 && sd3 < min_score {
+        min_score = sd3
+    }
+
+    // printf("min score at %q %q = %q\n", x, y, min_score)
+
+    return min_score
+}
+
+w := parse_world(lines)
+// printf("%q\n", w)
+
+pmin := aint()
+pmin->aint_resize_fill(w.w * w.h, 0)
+
+p := lowest_score_path(w, w.pos.x, w.pos.y, RIGHT, 0, pmin)
+
+printf("%q\n", p)
