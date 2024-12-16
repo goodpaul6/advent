@@ -104,7 +104,7 @@ func store_scores(w: World, x: int, y: int, dir: int, score: int, pmin: aint, pa
     }
  
     v := pmin[x + y * w.w]
-    if v >= 0 && v < score {
+    if v >= 0 && v < score - 1001 {
         // This is the shortest path don't overwrite it
         return;
     }
@@ -183,6 +183,10 @@ store_scores(w, w.pos.x, w.pos.y, LEFT, 0, pmin, path_so_far, -1)
 
 best_score := pmin[spos.x + spos.y * w.w]
 
+printf("score=%q\n", best_score)
+
+// print_aint_grid_w(pmin, w.w, w.h, 8)
+
 pmin->aint_fill(-1)
 store_scores(w, w.pos.x, w.pos.y, DOWN, 0, pmin, path_so_far, -1)
 
@@ -198,7 +202,10 @@ printf("score=%q\n", best_score)
 
 // Run again this time keeping track of paths
 pmin->aint_fill(-1)
-store_scores(w, w.pos.x, w.pos.y, RIGHT, 0, pmin, path_so_far, best_score)
+store_scores(w, w.pos.x, w.pos.y, LEFT, 0, pmin, path_so_far, best_score)
+
+pmin->aint_fill(-1)
+store_scores(w, w.pos.x, w.pos.y, DOWN, 0, pmin, path_so_far, best_score)
 
 printf("path count=%q\n", lowest_score_paths->a_av2_len())
 
