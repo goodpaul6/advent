@@ -1,0 +1,16 @@
+struct V2 {
+    x: int
+    y: int
+}
+
+// Assumes x <= 0xff and y <= 0xff
+func pack_coord(x: int, y: int): int {
+    return x << 8 | y
+}
+
+func unpack_coord(c: int): V2 {
+    return new V2{(c >> 8) & 0xff, c & 0xff}
+}
+
+c := pack_coord(10, 20)
+printf("%q\n", unpack_coord(c))

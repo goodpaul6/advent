@@ -92,20 +92,12 @@ func delta_y(dir: int): int {
     else return 0
 }
 
-// Assumes x <= 0xff and y <= 0xff
-func pack_coord(x: int, y: int): int {
-    return x << 8 | y
-}
+use array("V2") as av2
+use array("av2") as a_av2
 
-func unpack_coord(c: int): V2 {
-    return new V2{(c >> 8) & 0xff, c & 0xff}
-}
+lowest_score_paths := a_av2()
 
-use array("aint") as a_aint
-
-lowest_score_paths := a_aint()
-
-func store_scores(w: World, x: int, y: int, dir: int, score: int, pmin: aint, path_so_far: aint, lowest_score: int) {
+func store_scores(w: World, x: int, y: int, dir: int, score: int, pmin: aint, path_so_far: av2, lowest_score: int) {
     if w->get_tile(x, y) != EMPTY {
         // Not a valid path here
         return;
@@ -117,7 +109,7 @@ func store_scores(w: World, x: int, y: int, dir: int, score: int, pmin: aint, pa
         return;
     }
 
-    path_so_far->aint_push(pack_coord(x, y))
+    path_so_far->av2_push(new V2{x, y})
 
     // printf("at %q %q, dir = %q score = %q\n", x, y, dir, score)
 
@@ -140,13 +132,13 @@ func store_scores(w: World, x: int, y: int, dir: int, score: int, pmin: aint, pa
     pmin[x + y * w.w] = score
 
     if done {
-        if score == lowest_score {
-            path := aint()
+        if score <= lowest_score {
+            path := av2()
             // Copy because path_so_far will get mutated (it is just one array)
-            path->aint_copy(path_so_far)
+            path->av2_copy(path_so_far)
 
             // Remember this as a lowest score path
-            lowest_score_paths->a_aint_push(path)
+            lowest_score_paths->a_av2_push(path)
         }
 
         return;
@@ -157,23 +149,23 @@ func store_scores(w: World, x: int, y: int, dir: int, score: int, pmin: aint, pa
     d2 := (dir + 2) % DIR_COUNT
     d3 := (dir + 3) % DIR_COUNT
 
-    path_len := path_so_far->aint_len()
+    path_len := path_so_far->av2_len()
 
     store_scores(w, x + delta_x(d0), y + delta_y(d0), d0, score + 1, pmin, path_so_far, lowest_score)
     // Restore the path to prev size
-    path_so_far->aint_resize(path_len)
+    path_so_far->av2_resize(path_len)
 
     store_scores(w, x + delta_x(d1), y + delta_y(d1), d1, score + 1001, pmin, path_so_far, lowest_score)
-    path_so_far->aint_resize(path_len)
+    path_so_far->av2_resize(path_len)
 
     store_scores(w, x + delta_x(d2), y + delta_y(d2), d2, score + 2001, pmin, path_so_far, lowest_score)
-    path_so_far->aint_resize(path_len)
+    path_so_far->av2_resize(path_len)
 
     // Only 1000 because we can turn counterclockwise
     store_scores(w, x + delta_x(d3), y + delta_y(d3), d3, score + 1001, pmin, path_so_far, lowest_score)
 
     // Pop off the position we pushed as well before returning
-    path_so_far->aint_resize(path_len - 1)
+    path_so_far->av2_resize(path_len - 1)
 }
 
 w := parse_world(lines)
@@ -191,7 +183,7 @@ w.pos = epos
 pmin := aint()
 pmin->aint_resize_fill(w.w * w.h, -1)
 
-path_so_far := aint()
+path_so_far := av2()
 
 store_scores(w, w.pos.x, w.pos.y, LEFT, 0, pmin, path_so_far, -1)
 store_scores(w, w.pos.x, w.pos.y, DOWN, 0, pmin, path_so_far, -1)
@@ -217,15 +209,14 @@ store_scores(w, w.pos.x, w.pos.y, UP, 0, pmin, path_so_far, best_score)
 pmin->aint_resize_fill(w.w * w.h, -1)
 store_scores(w, w.pos.x, w.pos.y, DOWN, 0, pmin, path_so_far, best_score)
 
-printf("path count=%q\n", lowest_score_paths->a_aint_len())
-
+printf("path count=%q\n", lowest_score_paths->a_av2_len())
 
 marked := abool()
 marked->abool_resize_fill(w.w * w.h, false)
 
-foreach a in lowest_score_paths {
-    foreach v in a {
-        c := unpack_coord(v)
+foreach a, i in lowest_score_paths {
+    printf("path %i\n", i)
+    foreach c in a {
         printf("%q\n", c)
         marked[c.x + c.y * w.w] = true
     }
