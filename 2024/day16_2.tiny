@@ -1,6 +1,6 @@
 use import("util.tiny")
 
-data := read_file("inputs/day16_test.txt")
+data := read_file("inputs/day16.txt")
 
 lines := data->split_by_char('\n')
 lines->astr_pop()
@@ -105,7 +105,7 @@ func store_scores(w: World, x: int, y: int, dir: int, score: int, pmin: aint, pa
  
     v := pmin[x + y * w.w]
     if v >= 0 && v < score {
-        // This is the shortest path so far since we started at the end, don't overwrite it
+        // This is the shortest path don't overwrite it
         return;
     }
 
@@ -113,25 +113,19 @@ func store_scores(w: World, x: int, y: int, dir: int, score: int, pmin: aint, pa
 
     // printf("at %q %q, dir = %q score = %q\n", x, y, dir, score)
 
-    // We must only store min scores for the end pos if we're facing left (opposite of right)
-    done := false
-
     if x == w.end_pos.x && y == w.end_pos.y {
-        if dir == DOWN {
-            // Need to turn to face right
+        // printf("reached end at %q %q with score %q\n", x, y, score)
+
+        if dir == LEFT {
+            // We're good
+        } else if dir == DOWN {
             score += 1000
         } else if dir == UP {
             score += 1000
-        } else if dir == RIGHT {
+        } else {
             score += 2000
         }
 
-        done = true
-    }
-
-    pmin[x + y * w.w] = score
-
-    if done {
         if score <= lowest_score {
             path := av2()
             // Copy because path_so_far will get mutated (it is just one array)
@@ -140,9 +134,9 @@ func store_scores(w: World, x: int, y: int, dir: int, score: int, pmin: aint, pa
             // Remember this as a lowest score path
             lowest_score_paths->a_av2_push(path)
         }
-
-        return;
     }
+
+    pmin[x + y * w.w] = score
  
     d0 := dir
     d1 := (dir + 1) % DIR_COUNT
@@ -152,6 +146,7 @@ func store_scores(w: World, x: int, y: int, dir: int, score: int, pmin: aint, pa
     path_len := path_so_far->av2_len()
 
     store_scores(w, x + delta_x(d0), y + delta_y(d0), d0, score + 1, pmin, path_so_far, lowest_score)
+
     // Restore the path to prev size
     path_so_far->av2_resize(path_len)
 
@@ -177,37 +172,33 @@ spos := w.pos
 
 printf("spos=%q epos=%q\n", spos, epos)
 
-w.end_pos = spos
 w.pos = epos
+w.end_pos = spos
 
 pmin := aint()
 pmin->aint_resize_fill(w.w * w.h, -1)
 
 path_so_far := av2()
-
 store_scores(w, w.pos.x, w.pos.y, LEFT, 0, pmin, path_so_far, -1)
-store_scores(w, w.pos.x, w.pos.y, DOWN, 0, pmin, path_so_far, -1)
-store_scores(w, w.pos.x, w.pos.y, UP, 0, pmin, path_so_far, -1)
-store_scores(w, w.pos.x, w.pos.y, DOWN, 0, pmin, path_so_far, -1)
 
 best_score := pmin[spos.x + spos.y * w.w]
 
+pmin->aint_fill(-1)
+store_scores(w, w.pos.x, w.pos.y, DOWN, 0, pmin, path_so_far, -1)
+
+best_score_2 := pmin[spos.x + spos.y * w.w]
+
+if best_score_2 < best_score {
+    best_score = best_score_2
+}
+
 printf("score=%q\n", best_score)
 
-print_aint_grid_w(pmin, w.w, w.h, 8)
+// print_aint_grid_w(pmin, w.w, w.h, 8)
 
 // Run again this time keeping track of paths
-pmin->aint_resize_fill(w.w * w.h, -1)
-store_scores(w, w.pos.x, w.pos.y, LEFT, 0, pmin, path_so_far, best_score)
-
-pmin->aint_resize_fill(w.w * w.h, -1)
-store_scores(w, w.pos.x, w.pos.y, DOWN, 0, pmin, path_so_far, best_score)
-
-pmin->aint_resize_fill(w.w * w.h, -1)
-store_scores(w, w.pos.x, w.pos.y, UP, 0, pmin, path_so_far, best_score)
-
-pmin->aint_resize_fill(w.w * w.h, -1)
-store_scores(w, w.pos.x, w.pos.y, DOWN, 0, pmin, path_so_far, best_score)
+pmin->aint_fill(-1)
+store_scores(w, w.pos.x, w.pos.y, RIGHT, 0, pmin, path_so_far, best_score)
 
 printf("path count=%q\n", lowest_score_paths->a_av2_len())
 
@@ -215,14 +206,12 @@ marked := abool()
 marked->abool_resize_fill(w.w * w.h, false)
 
 foreach a, i in lowest_score_paths {
-    printf("path %i\n", i)
     foreach c in a {
-        printf("%q\n", c)
         marked[c.x + c.y * w.w] = true
     }
 }
 
-print_abool_grid(marked, w.w, w.h)
+// print_abool_grid(marked, w.w, w.h)
 
 mark_count := 0
 
@@ -233,4 +222,4 @@ for y := 0; y < w.h; y += 1 {
         }
     }
 }
-printf("%q\n", mark_count)
+printf("marked=%q\n", mark_count)
