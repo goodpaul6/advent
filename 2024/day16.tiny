@@ -92,71 +92,58 @@ func delta_y(dir: int): int {
     else return 0
 }
 
-func lowest_score_path(w: World, x: int, y: int, dir: int, score: int, vis: aint): int {
+func store_scores(w: World, x: int, y: int, dir: int, score: int, pmin: aint) {
     if w->get_tile(x, y) != EMPTY {
         // Not a valid path here
-        return -1
+        return;
     }
 
-    if x == w.end_pos.x && y == w.end_pos.y {
-        printf("At end: %q\n", score)
-        return score
-    }
-
-    v := vis[x + y * w.w]
-    if v > 0 {
-        // Can't backtrack
-        return -1
+    v := pmin[x + y * w.w]
+    if v >= 0 && v <= score {
+        // This is the shortest path so far since we started at the end, don't overwrite it
+        return;
     }
 
     // printf("at %q %q, dir = %q score = %q\n", x, y, dir, score)
 
-    // Prevent infinite recursion
-    vis[x + y * w.w] = 1
+    // We must only store min scores for the end pos if we're facing left (opposite of right)
+    if x == w.end_pos.x && y == w.end_pos.y && dir != LEFT {
+        return;
+    }
+
+    pmin[x + y * w.w] = score
  
     d0 := dir
     d1 := (dir + 1) % DIR_COUNT
     d2 := (dir + 2) % DIR_COUNT
     d3 := (dir + 3) % DIR_COUNT
 
-    sd0 := lowest_score_path(w, x + delta_x(d0), y + delta_y(d0), d0, score + 1, vis)
-    sd1 := lowest_score_path(w, x + delta_x(d1), y + delta_y(d1), d1, score + 1 + 1000, vis)
-    sd2 := lowest_score_path(w, x + delta_x(d2), y + delta_y(d2), d2, score + 1 + 2000, vis)
+    store_scores(w, x + delta_x(d0), y + delta_y(d0), d0, score + 1, pmin)
+    store_scores(w, x + delta_x(d1), y + delta_y(d1), d1, score + 1001, pmin)
+    store_scores(w, x + delta_x(d2), y + delta_y(d2), d2, score + 2001, pmin)
     // Only 1000 because we can turn counterclockwise
-    sd3 := lowest_score_path(w, x + delta_x(d3), y + delta_y(d3), d3, score + 1 + 1000, vis)
-
-    // Okay, backtrack
-    vis[x + y * w.w] = 0
-
-    min_score := INT_MAX
-    
-    if sd0 >= 0 && sd0 < min_score {
-        min_score = sd0
-    }
-
-    if sd1 >= 0 && sd1 < min_score {
-        min_score = sd1
-    }
-
-    if sd2 >= 0 && sd2 < min_score {
-        min_score = sd2
-    }
-
-    if sd3 >= 0 && sd3 < min_score {
-        min_score = sd3
-    }
-
-    // printf("min score at %q %q = %q\n", x, y, min_score)
-
-    return min_score
+    store_scores(w, x + delta_x(d3), y + delta_y(d3), d3, score + 1001, pmin)
 }
 
 w := parse_world(lines)
 // printf("%q\n", w)
 
+// Swap pos and end pos so we can work backwards
+epos := w.end_pos
+spos := w.pos
+
+printf("spos=%q epos=%q\n", spos, epos)
+
+w.end_pos = spos
+w.pos = epos
+
 pmin := aint()
-pmin->aint_resize_fill(w.w * w.h, 0)
+pmin->aint_resize_fill(w.w * w.h, -1)
 
-p := lowest_score_path(w, w.pos.x, w.pos.y, RIGHT, 0, pmin)
+// Approach from all dirs
+store_scores(w, w.pos.x, w.pos.y, DOWN, 0, pmin)
+store_scores(w, w.pos.x, w.pos.y, LEFT, 0, pmin)
+store_scores(w, w.pos.x, w.pos.y, UP, 0, pmin)
+store_scores(w, w.pos.x, w.pos.y, RIGHT, 0, pmin)
 
-printf("%q\n", p)
+printf("%q\n", pmin[spos.x + spos.y * w.w])
