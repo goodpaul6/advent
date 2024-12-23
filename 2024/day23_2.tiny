@@ -1,0 +1,94 @@
+use import("util.tiny")
+
+data := read_file("inputs/day22_example.txt")
+
+lines := data->split_by_char('\n')
+lines->astr_pop()
+
+name_to_conn_names := dict()
+
+foreach line in lines {
+    if line == "" {
+        continue
+    }
+
+    parts := line->split_by_char('-')
+
+    p1 := parts[0]
+    p2 := parts[1]
+
+    prev := cast(name_to_conn_names->dict_get(p1), astr)
+
+    if prev == null {
+        prev = astr()
+    }
+
+    prev->astr_push(p2) 
+
+    name_to_conn_names->dict_put(p1, prev)
+
+    prev = cast(name_to_conn_names->dict_get(p2), astr)
+
+    if prev == null {
+        prev = astr()
+    }
+
+    prev->astr_push(p1) 
+
+    name_to_conn_names->dict_put(p2, prev)
+}
+
+comps := cast(cast(name_to_conn_names->dict_keys(), any), astr)
+
+set_count := 0
+
+printf("comp_count=%q\n", comps->astr_len())
+
+name_label := dict()
+
+struct NameLabel {
+    name: str
+    label: int
+}
+
+use array("NameLabel") as anl
+
+cur_label := 0
+
+foreach comp in comps {
+    to_label := anl(new NameLabel{
+        comp,
+        cur_label,
+    })
+
+    while to_label->anl_len() > 0 {
+        cur := to_label[0]
+
+        // TODO(Apaar): Add queue data structure?
+        to_label->anl_shift()
+        
+        plabel := name_label->dict_get(cur.name)
+        if plabel != null {
+            continue
+        }
+
+        label := cur.label
+
+        name_label->dict_put(cur, label)
+
+        if cur_label <= label {
+            // Make sure cur_label is non-conflicting
+            cur_label = label + 1
+        }
+
+        conns := cast(name_to_conn_names->dict_get(cur), astr)
+
+        foreach conn in conns {
+            to_label->anl_push(new NameLabel{conn, label + 1})
+        }
+    }
+}
+
+foreach kv in name_label->dict_iter() {
+    printf("%q\n", kv)
+}
