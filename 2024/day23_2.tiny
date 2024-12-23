@@ -38,191 +38,228 @@ foreach line in lines {
     name_to_conn_names->dict_put(p2, prev)
 }
 
-comps := cast(cast(name_to_conn_names->dict_keys(), any), astr)
-
 // Removes any values in dest that are not in src
 func astr_intersect(dest: astr, src: astr) {
     foreach v, i in dest {
         if !src->astr_has(v) {  
             // Remove, we don't care about order so we just pull the last elem
-            dest[i] := dest[dest->astr_len() - 1]
+            dest[i] = dest[dest->astr_len() - 1]
             dest->astr_pop()
         }
     }
 }
 
+comps := cast(cast(name_to_conn_names->dict_keys(), any), astr)
+
 set_count := 0
 
 printf("comp_count=%q\n", comps->astr_len())
 
-name_label := dict()
-
-struct NameLabel {
-    name: str
-    label: int
-}
-
-use array("NameLabel") as anl
-
-cur_label := 0
-
-func label() {
-    foreach comp in comps {
-        to_label := anl(new NameLabel{
-            comp,
-            cur_label,
-        })
-
-        did_label := false
-
-        while to_label->anl_len() > 0 {
-            cur := to_label[0]
-
-            // TODO(Apaar): Add queue data structure?
-            to_label->anl_shift()
-            
-            plabel := name_label->dict_get(cur.name)
-            if plabel != null {
-                continue
-            }
-
-            did_label = true
-
-            label := cur.label
-
-            name_label->dict_put(cur.name, label)
-
-            if cur_label <= label {
-                // Make sure cur_label is non-conflicting
-                cur_label = label + 1
-            }
-
-            conns := cast(name_to_conn_names->dict_get(cur.name), astr)
-
-            if conns == null {
-                continue
-            }
-
-            foreach conn in conns {
-                to_label->anl_push(new NameLabel{conn, label + 1})
-            }
-        }
-
-        //printf("comp=%q did_label=%q\n", comp, did_label)
-    }
-}
-
-name_label2 := dict()
-
-func label2() {
-    highest_label := cur_label - 1
+func main() {
+    longest_net: astr = cast(null, astr)
 
     foreach comp in comps {
-        clabel := cast(name_label->dict_get(comp), int)
+        conns := cast(name_to_conn_names->dict_get(comp), astr)
 
-        // We want to start our BFS at the highest labeled comp
-        if clabel != highest_label {
+        if conns == null {
             continue
         }
 
-        to_label := anl(new NameLabel{
-            comp,
-            0,
-        })
+        net := astr(comp)
 
-        while to_label->anl_len() > 0 {
-            cur := to_label[0]
+        printf("%q start net=%q\n", comp, net)
 
-            // TODO(Apaar): Add queue data structure?
-            to_label->anl_shift()
-            
-            plabel := name_label2->dict_get(cur.name)
-            if plabel != null {
-                continue
+        foreach conn_comp in conns {
+            other_conns := cast(name_to_conn_names->dict_get(conn_comp), astr)
+
+            assert(other_conns != null, "other_conns != null")
+
+            // If this has all the nodes in our network in its connections, add it to the network
+            has_all_nodes := true
+
+            foreach node in net {
+                if !other_conns->astr_has(node) {
+                    has_all_nodes = false
+                    break
+                }
             }
 
-            label := cur.label
-
-            name_label2->dict_put(cur.name, label)
-
-            if cur_label <= label {
-                // Make sure cur_label is non-conflicting
-                cur_label = label + 1
+            if has_all_nodes {
+                net->astr_push(conn_comp)
             }
 
-            conns := cast(name_to_conn_names->dict_get(cur.name), astr)
+            // printf("> %q conns=%q\n", conn_comp, other_conns)
+            // printf("> %q net=%q\n", comp, net)
 
-            if conns == null {
-                continue
-            }
-
-            foreach conn in conns {
-                to_label->anl_push(new NameLabel{conn, label + 1})
-            }
+            // net->astr_intersect(other_conns)
         }
-
-        // TURNS OUT IT IS FULLY REACHABLE FROM ONE NODE so there
-        // are no disjoint islands to worry about, just one pass is fine,
-        // hence this break
-        break
-    }
-}
-
-label()
-label2()
-
-// Now we do a pass to find all the possible sets for each comp
-foreach ccomp, i in comps {
-    clabel := cast(name_label->dict_get(ccomp), int)
-    clabel2 := cast(name_label2->dict_get(ccomp), int)
-
-    assert(clabel != null, "clabel must not be null")
-    assert(clabel2 != null, "clabel2 must not be null")
-
-    possible := astr()
-
-    foreach other_comp, j in comps {
-        if j == i {
-            continue
+    
+        if longest_net == null || longest_net->astr_len() < net->astr_len() {
+            longest_net = net
         }
-
-        oclabel := cast(name_label->dict_get(other_comp), int)
-        oclabel2 := cast(name_label2->dict_get(other_comp), int)
-
-        assert(oclabel != null, "oclabel must not be null")
-        assert(oclabel2 != null, "oclabel2 must not be null")
-
-        diff := abs(clabel - oclabel)
-        if diff > 1 {
-            continue
-        }
-
-        diff2 := abs(clabel2 - oclabel2)
-        if diff2 > 1 {
-            continue
-        }
-
-        diff3 := abs(clabel - oclabel2)
-        if diff3 > 1 {
-            continue
-        }
-
-        diff4 := abs(clabel2 - oclabel)
-        if diff4 > 1 {
-            continue
-        }
-        
-        // printf("%q l1=%q l2=%q, %q l1=%q, l2=%q\n", ccomp, clabel, clabel2,
-        // other_comp, oclabel, oclabel2)
-
-        possible->astr_push(other_comp)
     }
 
-    printf("possible for %q=%q\n", ccomp, possible->astr_len())
+    printf("%q\n", longest_net)
 }
 
-// foreach kv in name_label->dict_iter() {
-//     v2 := name_label2->dict_get(kv.key)
+main()
+
+// name_label := dict()
 // 
-//     printf("%q %q\n", kv, v2)
+// struct NameLabel {
+//     name: str
+//     label: int
 // }
+// 
+// use array("NameLabel") as anl
+// 
+// cur_label := 0
+// 
+// func label() {
+//     foreach comp in comps {
+//         to_label := anl(new NameLabel{
+//             comp,
+//             cur_label,
+//         })
+// 
+//         did_label := false
+// 
+//         while to_label->anl_len() > 0 {
+//             cur := to_label[0]
+// 
+//             // TODO(Apaar): Add queue data structure?
+//             to_label->anl_shift()
+//             
+//             plabel := name_label->dict_get(cur.name)
+//             if plabel != null {
+//                 continue
+//             }
+// 
+//             did_label = true
+// 
+//             label := cur.label
+// 
+//             name_label->dict_put(cur.name, label)
+// 
+//             if cur_label <= label {
+//                 // Make sure cur_label is non-conflicting
+//                 cur_label = label + 1
+//             }
+// 
+//             conns := cast(name_to_conn_names->dict_get(cur.name), astr)
+// 
+//             if conns == null {
+//                 continue
+//             }
+// 
+//             foreach conn in conns {
+//                 to_label->anl_push(new NameLabel{conn, label + 1})
+//             }
+//         }
+// 
+//         //printf("comp=%q did_label=%q\n", comp, did_label)
+//     }
+// }
+// 
+// name_label2 := dict()
+// 
+// func label2() {
+//     highest_label := cur_label - 1
+// 
+//     foreach comp in comps {
+//         clabel := cast(name_label->dict_get(comp), int)
+// 
+//         // We want to start our BFS at the highest labeled comp
+//         if clabel != highest_label {
+//             continue
+//         }
+// 
+//         to_label := anl(new NameLabel{
+//             comp,
+//             0,
+//         })
+// 
+//         while to_label->anl_len() > 0 {
+//             cur := to_label[0]
+// 
+//             // TODO(Apaar): Add queue data structure?
+//             to_label->anl_shift()
+//             
+//             plabel := name_label2->dict_get(cur.name)
+//             if plabel != null {
+//                 continue
+//             }
+// 
+//             label := cur.label
+// 
+//             name_label2->dict_put(cur.name, label)
+// 
+//             if cur_label <= label {
+//                 // Make sure cur_label is non-conflicting
+//                 cur_label = label + 1
+//             }
+// 
+//             conns := cast(name_to_conn_names->dict_get(cur.name), astr)
+// 
+//             if conns == null {
+//                 continue
+//             }
+// 
+//             foreach conn in conns {
+//                 to_label->anl_push(new NameLabel{conn, label + 1})
+//             }
+//         }
+// 
+//         // TURNS OUT IT IS FULLY REACHABLE FROM ONE NODE so there
+//         // are no disjoint islands to worry about, just one pass is fine,
+//         // hence this break
+//         break
+//     }
+// }
+// 
+// label()
+// label2()
+// 
+// // Now we do a pass to find all the possible sets for each comp
+// foreach ccomp, i in comps {
+//     clabel := cast(name_label->dict_get(ccomp), int)
+//     clabel2 := cast(name_label2->dict_get(ccomp), int)
+// 
+//     assert(clabel != null, "clabel must not be null")
+//     assert(clabel2 != null, "clabel2 must not be null")
+// 
+//     possible := astr()
+// 
+//     conns := cast(name_to_conn_names->dict_get(ccomp), astr)
+// 
+//     foreach other_comp in conns {
+//         oclabel := cast(name_label->dict_get(other_comp), int)
+//         oclabel2 := cast(name_label2->dict_get(other_comp), int)
+// 
+//         assert(oclabel != null, "oclabel must not be null")
+//         assert(oclabel2 != null, "oclabel2 must not be null")
+// 
+//         diff := abs(clabel - oclabel)
+//         if diff > 1 {
+//             continue
+//         }
+// 
+//         diff2 := abs(clabel2 - oclabel2)
+//         if diff2 > 1 {
+//             continue
+//         }
+//         
+//         // printf("%q l1=%q l2=%q, %q l1=%q, l2=%q\n", ccomp, clabel, clabel2,
+//         // other_comp, oclabel, oclabel2)
+// 
+//         possible->astr_push(other_comp)
+//     }
+// 
+//     printf("possible for %q=%q\n", ccomp, possible->astr_len())
+// }
+// 
+// // foreach kv in name_label->dict_iter() {
+// //     v2 := name_label2->dict_get(kv.key)
+// // 
+// //     printf("%q %q\n", kv, v2)
+// // }
