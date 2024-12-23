@@ -1,0 +1,89 @@
+use import("util.tiny")
+
+data := read_file("inputs/day22.txt")
+
+lines := data->split_by_char('\n')
+lines->astr_pop()
+
+name_to_conn_names := dict()
+
+foreach line in lines {
+    if line == "" {
+        continue
+    }
+
+    parts := line->split_by_char('-')
+
+    p1 := parts[0]
+    p2 := parts[1]
+
+    prev := cast(name_to_conn_names->dict_get(p1), astr)
+
+    if prev == null {
+        prev = astr()
+    }
+
+    prev->astr_push(p2) 
+
+    name_to_conn_names->dict_put(p1, prev)
+
+    prev = cast(name_to_conn_names->dict_get(p2), astr)
+
+    if prev == null {
+        prev = astr()
+    }
+
+    prev->astr_push(p1) 
+
+    name_to_conn_names->dict_put(p2, prev)
+}
+
+comps := cast(cast(name_to_conn_names->dict_keys(), any), astr)
+
+set_count := 0
+
+printf("comp_count=%q\n", comps->astr_len())
+
+// found := dict()
+
+foreach a, i in comps {
+    foreach b, j in comps {
+        if j <= i {
+            continue
+        }
+
+        foreach c, k in comps {
+            if k <= j {
+                continue
+            }
+
+            if a[0] != 't' && b[0] != 't' && c[0] != 't' {
+                continue
+            }
+
+            // Are these mutually connected
+            a_conns := cast(name_to_conn_names->dict_get(a), astr)
+            b_conns := cast(name_to_conn_names->dict_get(b), astr)
+            c_conns := cast(name_to_conn_names->dict_get(c), astr)
+
+            if a_conns->astr_has(b) && a_conns->astr_has(c) &&
+               b_conns->astr_has(a) && b_conns->astr_has(c) &&
+               c_conns->astr_has(a) && c_conns->astr_has(b) {
+                printf("%q-%q-%q\n", a, b, c)
+                // key := strcat(a, "-", b, "-", c)
+                // 
+                // if found->dict_exists(key) {
+                //     continue
+                // }
+
+                // found->dict_put(key, true)
+
+                // printf("%q->%q %q->%q %q->%q\n", a, a_conns, b, b_conns, c, c_conns)
+
+                set_count += 1
+            }
+        }
+    }
+}
+
+printf("%q\n", set_count)

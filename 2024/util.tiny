@@ -71,6 +71,17 @@ func aint_has(a: aint, v: int): bool {
     return false
 }
 
+func astr_has(a: astr, v: str): bool {
+    for i := 0; i < a->astr_len(); i += 1 {
+        if a[i] == v {
+            return true
+        }
+    }
+
+    return false
+}
+
+
 struct DictIter {
     d: dict
     keys: array_any
