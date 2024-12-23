@@ -159,3 +159,14 @@ func print_abool_grid(ag: abool, w: int, h: int) {
         printf("\n")
     }
 }
+
+func assert(v: bool, msg: str) {
+    if !v {
+        printf("%s\n", msg)
+        exit(1)
+    }
+}
+
+func abs(v: int): int {
+    return if v < 0 (-v) else v
+}
